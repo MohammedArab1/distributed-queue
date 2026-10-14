@@ -9,7 +9,7 @@
 - Exported (`Enqueue`) vs unexported (`enqueue`) is Go's whole visibility system.
 - `go build -o bin/ ./cmd/...` — the `...` wildcard builds every `main` package under `cmd/` into a matching binary.
 - Makefile recipes must be indented with tabs; non-file targets need `.PHONY`.
-**Gotchas we hit:** Git defaulted the initial branch to `master`; renamed to `main` to match the plan's conventions (the Phase 5 `buf breaking` target references `main`).
+**Gotchas we hit:** Git defaulted the initial branch to `master`; renamed to `main` to match the plan's conventions (the Phase 5 `buf breaking` target references `main`). Also: `go build ./...` with a single `main` package wrote a `server` executable to the repo root, and `git add -A` committed it. Fixed by untracking it and adding `/server` to `.gitignore` (recorded in PLAN.md Appendix D).
 **Learner questions:**
 - Why are module paths GitHub-shaped? → The path *is* the fetch location; no central registry, DNS gives uniqueness, and a real path means imports resolve if/when the repo is published.
 - "I compare the downloaded checksum to go.sum" → right idea, but go.sum is *recorded automatically* at first fetch (then verified), not hand-computed and trusted.

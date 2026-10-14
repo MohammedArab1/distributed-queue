@@ -3369,4 +3369,4 @@ The AI records every approved deviation from this plan here.
 
 | Date | Step | Change | Reason |
 |---|---|---|---|
-| | | | |
+| 2026-10-13 | 1.1 | Added `/server` to `.gitignore` | `go build ./...` with a single `main` package writes the executable to the repo root (not `bin/`), and `git add -A` committed it. Self-resolves once Phase 5 adds more binaries, but the ignore is needed until then. |
