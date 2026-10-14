@@ -127,7 +127,7 @@ The AI ticks these off (`[x]`) as steps are completed.
 
 **Phase 1 — Project setup and Go refresher**
 - [x] 1.1 Tooling check and repository skeleton
-- [ ] 1.2 Local infrastructure with Docker Compose
+- [x] 1.2 Local infrastructure with Docker Compose
 - [ ] 1.3 Config, logging, and a server that connects to Postgres
 
 **Phase 2 — Data model**
