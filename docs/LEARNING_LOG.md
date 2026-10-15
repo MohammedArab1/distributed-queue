@@ -31,3 +31,19 @@
 - `docker compose exec postgres psql -U jobqueue jobqueue` breakdown → exec into the running `postgres` service, run its `psql` client as user `jobqueue` against database `jobqueue`.
 **Interview soundbite:** "I run Postgres and Redis through Docker Compose with healthchecks and `up --wait`, so the dev database is reproducible — container startup and database readiness are two different things."
 
+## Step 1.3 — Config, logging, and a server that connects to Postgres (2026-10-14)
+**Built:** `internal/config` (env helpers, `Server` struct, `LoadServer` with dev defaults) with table-driven `t.Setenv` tests; `internal/logging.New(level)` returning a slog text logger; `cmd/server` rewritten with the `run()` pattern — `signal.NotifyContext`, `pgxpool` + 5s ping, clean shutdown on Ctrl-C; `make run-server` target.
+**Key concepts:**
+- `context.Context` is a stop signal + deadline carried *down* a call tree; `ctx.Done()` stays silent until someone cancels it or the deadline passes. Cancellation flows parent → child only, never up.
+- `signal.NotifyContext` turns Ctrl-C/SIGTERM into ordinary context cancellation, so every blocking call stops through one mechanism.
+- The `run()` pattern: `main` stays tiny and is the only place that calls `os.Exit`; cleanup lives in `run()`'s defers, which run LIFO (`cancel` → `pool.Close` → `stop`). `os.Exit` skips defers — proven with live demos in `/tmp/opencode/ctxdemo`.
+- `%w` builds an error chain: `ping postgres: …: dial tcp …: connection refused` was three links; `errors.Is` can walk it. `%v` would keep the text but lose the chain.
+- `pgxpool.New` does not connect; `Ping` opens the first connection. A 5s **child** deadline makes startup fail fast while still inheriting Ctrl-C.
+- Separation of concerns: only the composition root reads env vars; libraries receive values (a pool, not a URL), so tests can point them at different databases.
+**Gotchas we hit:** `make up` failed with "The command 'docker' could not be found in this WSL 2 distro" — Docker Desktop was not running and the `docker` on PATH was its Windows stub. Starting Docker Desktop restored WSL integration (`/usr/bin/docker`) and all verifications passed.
+**Learner questions:**
+- "Explain `context`/`NotifyContext` and the `run()` pattern in simpler terms" → re-taught with four tiny runnable demos (timeout, SIGINT, run-pattern, os.Exit-skips-defers) instead of prose; first explanation went too fast.
+- "Does `pingCtx` end the program?" → it cancels only the Ping call; the early error return from `run` ends the program, not parent cancellation.
+- "Why shouldn't `store` read env vars?" → separation of concerns: config is read once at the composition root; libraries receive their dependencies.
+**Interview soundbite:** "Startup is a `run() error` called by a tiny `main`: `signal.NotifyContext` cancels everything on Ctrl-C, the Postgres ping gets its own 5-second child deadline so startup fails fast, and defers guarantee the pool closes before `os.Exit` is ever reached."
+

@@ -1,7 +1,7 @@
 -include .env
 export
 
-.PHONY: build test lint
+.PHONY: build test lint run-server
 
 build:
 	go build -o bin/ ./cmd/...
@@ -11,6 +11,9 @@ test:
 
 lint:
 	go vet $$(go list ./... | grep -v /examples/)
+
+run-server:
+	go run ./cmd/server
 
 .PHONY: up down reset-db psql redis-cli
 
