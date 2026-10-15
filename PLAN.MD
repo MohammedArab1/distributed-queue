@@ -8,8 +8,10 @@
 
 This file is two things at once:
 
-1. **A build plan.** An AI coding assistant follows it step by step to build a production-style distributed job queue in Go.
+1. **A build plan.** An AI coding assistant follows it step by step to build a production-style distributed job queue in Go. **The implementation notes in this file — `Design decisions`, `Build`, `Verify` and `Walkthrough focus` — are written for the AI, not for the learner.**
 2. **A curriculum.** For every step it says what to teach, which problem the step solves, how to solve it, and how to walk the learner through the finished code.
+
+**Assume the learner has not read the implementation notes in this file.** They exist so the AI solves each problem correctly and can judge the learner's design — not so the AI can hand the learner the answer. Before building anything, the AI must ask the learner how they think the step should work. Nothing gets built until the learner has reasoned their way to a correct solution (see [0.2 The teaching protocol](#02-the-teaching-protocol-follow-it-for-every-step)).
 
 Put this file at the root of the repository as `PLAN.md`, then point your AI assistant at it at the start of every session (see [0.4 Starting or resuming a session](#04-starting-or-resuming-a-session)).
 
@@ -50,33 +52,44 @@ Put this file at the root of the repository as `PLAN.md`, then point your AI ass
 ### 0.1 Ground rules
 
 1. **One step at a time.** Work only on the current step from the Progress Tracker (0.5). Never start the next step until the learner says so.
-2. **Follow the plan literally.** Use the exact file paths, package names, table and column names, RPC names, metric names and env vars defined here. Section 3 is the master list. Later steps depend on these names being exact.
-3. **Don't add features, libraries or abstractions the step doesn't ask for.** If something in the plan looks wrong or missing, stop, explain the problem, propose a fix, and wait for approval. If approved, edit `PLAN.md` and record it in [Appendix D: Plan changes](#appendix-d-plan-changes).
-4. **Never leave the build broken.** At the end of every step, `go build ./...`, `make lint` and `go test -race ./...` must pass (once tests exist). (`make lint` runs `go vet` on everything except `examples/`, which holds deliberately buggy teaching code from Phase 6.) If a test is flaky, fix the cause; don't skip the test.
-5. **Small, readable code.** Prefer plain, explicit code over clever code. Aim for functions under ~50 lines. Comments explain *why*, not *what*. Every exported identifier gets a doc comment.
-6. **Errors:** always handle them. Wrap with context: `fmt.Errorf("claim jobs: %w", err)`. Never `panic` in library code. Never discard an error with `_` without a comment saying why.
-7. **Contexts:** every function that does I/O or can block takes `ctx context.Context` as its first parameter.
-8. **Goroutines:** every goroutine must have (a) an owner, (b) a way to be told to stop (usually a context), and (c) a way for the owner to wait for it to finish (`sync.WaitGroup`, `errgroup`, or a `done` channel). In the walkthrough, say out loud who owns each goroutine and how it stops.
-9. **SQL:** write SQL by hand (no ORM, no sqlc). Always use `$1`-style parameters, never string-concatenated values. Every state transition is one statement or one transaction, guarded by the expected current state.
-10. **Secrets:** this project only uses local-only dev passwords from `.env.example` (`jobqueue` / `jobqueue`). Never put real credentials, tokens or keys in the repo.
-11. **Failures are teaching moments.** When something fails (compile error, test failure, Docker issue), show the error, explain in plain words what it means, explain the fix, then fix it.
-12. **Don't paste whole files into chat.** Write them to disk. In chat, show only the 5–30 line snippets you're explaining.
-13. **Check before you guess.** If you're unsure an API exists or how it behaves, check with `go doc <pkg>.<Symbol>`, the library source, or official docs before using it. Say when you're unsure.
-14. **Lost?** Re-read this file's Progress Tracker, `docs/LEARNING_LOG.md`, and `git log --oneline -20`.
+2. **The learner designs before you build.** Assume the learner has not read this file's implementation notes (`Design decisions`, `Build`, `Walkthrough focus`). Before you write any code for a step, ask the learner how *they* think the step's problem should be solved — this is a learning opportunity, not a formality. If their answer is wrong or weak, say exactly what is missing or broken, then ask them to think through a better solution. Do not give the answer away, and do not answer your own question. Build only after the learner understands and can explain the correct design. The full protocol is in 0.2.
+3. **Follow the plan literally.** Use the exact file paths, package names, table and column names, RPC names, metric names and env vars defined here. Section 3 is the master list. Later steps depend on these names being exact.
+4. **Don't add features, libraries or abstractions the step doesn't ask for.** If something in the plan looks wrong or missing, stop, explain the problem, propose a fix, and wait for approval. If approved, edit `PLAN.md` and record it in [Appendix D: Plan changes](#appendix-d-plan-changes).
+5. **Never leave the build broken.** At the end of every step, `go build ./...`, `make lint` and `go test -race ./...` must pass (once tests exist). (`make lint` runs `go vet` on everything except `examples/`, which holds deliberately buggy teaching code from Phase 6.) If a test is flaky, fix the cause; don't skip the test.
+6. **Small, readable code.** Prefer plain, explicit code over clever code. Aim for functions under ~50 lines. Comments explain *why*, not *what*. Every exported identifier gets a doc comment.
+7. **Errors:** always handle them. Wrap with context: `fmt.Errorf("claim jobs: %w", err)`. Never `panic` in library code. Never discard an error with `_` without a comment saying why.
+8. **Contexts:** every function that does I/O or can block takes `ctx context.Context` as its first parameter.
+9. **Goroutines:** every goroutine must have (a) an owner, (b) a way to be told to stop (usually a context), and (c) a way for the owner to wait for it to finish (`sync.WaitGroup`, `errgroup`, or a `done` channel). In the walkthrough, say out loud who owns each goroutine and how it stops.
+10. **SQL:** write SQL by hand (no ORM, no sqlc). Always use `$1`-style parameters, never string-concatenated values. Every state transition is one statement or one transaction, guarded by the expected current state.
+11. **Secrets:** this project only uses local-only dev passwords from `.env.example` (`jobqueue` / `jobqueue`). Never put real credentials, tokens or keys in the repo.
+12. **Failures are teaching moments.** When something fails (compile error, test failure, Docker issue), show the error, explain in plain words what it means, explain the fix, then fix it.
+13. **Don't paste whole files into chat.** Write them to disk. In chat, show only the 5–30 line snippets you're explaining.
+14. **Check before you guess.** If you're unsure an API exists or how it behaves, check with `go doc <pkg>.<Symbol>`, the library source, or official docs before using it. Say when you're unsure.
+15. **Lost?** Re-read this file's Progress Tracker, `docs/LEARNING_LOG.md`, and `git log --oneline -20`.
 
 ### 0.2 The teaching protocol (follow it for EVERY step)
 
-Every step in this plan has these sections: **Problem**, **Teach**, **Design decisions**, **Build**, **Verify**, **Walkthrough focus**, **Check your understanding**, **Done when**. Turn them into this conversation flow:
+Every step in this plan has these sections: **Problem**, **Teach**, **Design decisions**, **Build**, **Verify**, **Walkthrough focus**, **Check your understanding**, **Done when**. Turn them into this conversation flow. Note the **DESIGN** stage: the learner designs the solution out loud before any code is written, and that design is a hard gate on building.
 
 | Stage | What the AI does | Wait for the learner? |
 |---|---|---|
 | **1. FRAME** | In 3–6 sentences: what we're building and the **Problem** it solves. If the step says "Demo the problem", run it so the learner *sees* the problem. | No |
-| **2. TEACH** | Teach every item in **Teach**. For each one: plain definition → analogy or tiny example → why it matters *here*. Then explain the **Design decisions**: the options, what this plan picks, and why. End with 1–2 **Predict** questions (e.g. "What do you think happens if two workers run this query at the same instant?"). | **Yes.** Ask: "Any questions before I build this?" |
-| **3. BUILD** | Implement the **Build** list in order. Narrate briefly as you go ("Now the claim query, which is the heart of the queue"). | No |
-| **4. VERIFY** | Run every command in **Verify**. Show the relevant output and explain what it proves. | No |
-| **5. WALKTHROUGH** | Walk through what you built following the data flow ("a job enters here → goes here → ends here"). Cover each **Walkthrough focus** item. For key snippets: what it does, why it's written this way, what breaks if you remove it. Answer the Predict questions. | No |
-| **6. CHECK** | Ask the **Check your understanding** questions one or two at a time. Confirm what's right, gently correct what's wrong, and point to the line of code that proves it. The learner may say "skip". | **Yes** |
-| **7. WRAP UP** | Append to `docs/LEARNING_LOG.md` (template 0.3), tick the step in the Progress Tracker, commit: `git commit -m "Step X.Y: <title>"`. Then say: "Step X.Y done. Next: X.Z — <title>. Say 'next' when ready." | **Yes** |
+| **2. TEACH** | Teach every item in **Teach**. For each one: plain definition → analogy or tiny example → why it matters *here*. **Keep the plan's solution out of it:** do not read out the **Design decisions** yet, and do not jump to what the **Build** notes say. End with 1–2 **Predict** questions (e.g. "What do you think happens if two workers run this query at the same instant?"). | **Yes.** Ask: "Any questions before you design this?" |
+| **3. DESIGN** | Ask the learner how *they* think this step's problem should be solved — before any code exists. Start with the step's first major design decision. Judge their answer against the plan's **Design decisions**: a correct answer gets confirmed and a follow-up ("why does it work?"); a wrong or weak answer gets a plain explanation of what is missing or broken — **without giving the answer away** — then the same question again in a new form. Repeat until the learner can explain and defend the correct design. Then reveal the plan's full design, tie it back to what they proposed, and fill the gaps. | **Yes, and this is a hard gate. Never start BUILD before it passes.** |
+| **4. BUILD** | Implement the **Build** list in order. Narrate briefly as you go ("Now the claim query, which is the heart of the queue"). | No |
+| **5. VERIFY** | Run every command in **Verify**. Show the relevant output and explain what it proves. | No |
+| **6. WALKTHROUGH** | Walk through what you built following the data flow ("a job enters here → goes here → ends here"). Cover each **Walkthrough focus** item. For key snippets: what it does, why it's written this way, what breaks if you remove it. Answer the Predict questions. | No |
+| **7. CHECK** | Ask the **Check your understanding** questions one or two at a time. Confirm what's right, gently correct what's wrong, and point to the line of code that proves it. The learner may say "skip". | **Yes** |
+| **8. WRAP UP** | Append to `docs/LEARNING_LOG.md` (template 0.3), tick the step in the Progress Tracker, commit: `git commit -m "Step X.Y: <title>"`. Then say: "Step X.Y done. Next: X.Z — <title>. Say 'next' when ready." | **Yes** |
+
+**How the DESIGN stage works**
+
+- **One question per major decision.** Most steps need one design question. Big steps (for example 3.2 claim safety, 8.2 heartbeats, 14.3 unblocking) have two or three separate hard decisions: ask about them one at a time, and build only after all of them are settled.
+- **Ask open questions.** "How should we make sure two workers never take the same job?" is good. "Should we use `SKIP LOCKED`?" is bad: it contains the answer.
+- **Judge understanding, not vocabulary.** If the learner only repeats words from TEACH, ask them to explain the mechanism or apply it to this exact step. If TEACH already named the mechanism, the design question becomes "how would *you* apply it here, and why does it work?" — the learner still has to show they understand it.
+- **A wrong answer is the point, never a failure.** Say what is wrong in plain words ("that read-then-write pair has a gap: between the `SELECT` and the `UPDATE`, another worker can claim the same row"). Then ask: "How would you close that gap?" Let them try again.
+- **Hints in layers when the learner is stuck.** (1) Restate the problem more precisely. (2) Point at the constraint they missed. (3) Suggest where to look. Give the full answer only after several honest attempts — and even then, ask the learner to restate the design in their own words before you build.
+- **Nothing gets built until this stage passes.** No code, no SQL, no proto edits, no files, no commands that change the repository or the database.
 
 **Teaching style**
 
@@ -93,7 +106,7 @@ Every step in this plan has these sections: **Problem**, **Teach**, **Design dec
 - Where relevant, connect each concept to a real system in one sentence (Sidekiq, Celery, AWS SQS, RabbitMQ, Kafka, Temporal). This builds interview vocabulary.
 - Keep each TEACH stage to roughly 300–700 words. Split big topics across turns.
 - The learner can switch modes any time:
-  - **"fast mode"**: one-paragraph FRAME/TEACH, skip CHECK, short WALKTHROUGH.
+  - **"fast mode"**: one-paragraph FRAME/TEACH, one short DESIGN question (the gate still applies — if the first answer is already sound, move on), skip CHECK, short WALKTHROUGH.
   - **"deep mode"**: more depth, extra examples, alternative implementations.
   - **"quiz me"**: harder, interview-style questions.
 
@@ -105,6 +118,7 @@ After every step, append this to `docs/LEARNING_LOG.md`:
 ## Step X.Y — <title> (<YYYY-MM-DD>)
 **Built:** 1–3 bullets of what exists now that didn't before.
 **Key concepts:** 3–6 one-line bullets, in the learner's words where possible.
+**Design discussion:** the design question asked, what the learner first proposed, and how their reasoning changed.
 **Gotchas we hit:** errors or surprises and how we fixed them.
 **Learner questions:** questions asked + short answers.
 **Interview soundbite:** 1–2 sentences the learner could say in an interview about this step.
@@ -3370,3 +3384,4 @@ The AI records every approved deviation from this plan here.
 | Date | Step | Change | Reason |
 |---|---|---|---|
 | 2026-10-13 | 1.1 | Added `/server` to `.gitignore` | `go build ./...` with a single `main` package writes the executable to the repo root (not `bin/`), and `git add -A` committed it. Self-resolves once Phase 5 adds more binaries, but the ignore is needed until then. |
+| 2026-10-15 | 0.1, 0.2 | Added the DESIGN stage and ground rule 2: the AI assumes the learner has not read the plan's implementation notes, asks the learner to design each step's solution before building, and does not build until the learner understands the correct design. | Requested by the learner: each step should be a design exercise, not a walkthrough of a finished answer. |
