@@ -47,3 +47,19 @@
 - "Why shouldn't `store` read env vars?" → separation of concerns: config is read once at the composition root; libraries receive their dependencies.
 **Interview soundbite:** "Startup is a `run() error` called by a tiny `main`: `signal.NotifyContext` cancels everything on Ctrl-C, the Postgres ping gets its own 5-second child deadline so startup fails fast, and defers guarantee the pool closes before `os.Exit` is ever reached."
 
+## Step 2.1 — Design the job lifecycle (state machine) (2026-10-22)
+**Built:** `docs/ARCHITECTURE.md` "Job lifecycle" section: a mermaid state diagram with six states, a 12-row transition table (each move tagged with the step that builds it), and five invariants with how each is enforced. No code, by design: this step is the contract for later phases.
+**Key concepts:**
+- A state says *where the job is*, not what just happened. `fail-retry` and `replay` are triggers, not states.
+- Waiting comes in two kinds: time-based (`pending` + `run_at`) and event-based (`blocked`). The first is a column, the second is a state, because no timestamp predicts another job succeeding.
+- Terminal = no automatic exit. `succeeded` has no exit at all; `dead` exits only on operator replay; `cancelled` only when the upstream is replayed.
+- Store the source, derive the projection: `claimable = state='pending' AND run_at <= now()` is never stored, because time passes with no write to correct a stale boolean.
+- `attempts` counts deliveries, incremented atomically with the claim. That bounds crash loops: a job that kills its worker still reaches `dead`.
+- An invariant is a query that must return zero rows. `CHECK` sees only the new row, so monotonic counters and claimability live in the write path.
+**Design discussion:** Asked how to store the lifecycle: one table per state vs one `jobs` table with a `state` column. Learner chose one table, plus a `states` lookup table with an FK. The lookup table is defensible but adds a join and lets a state exist that no Go code handles; a `CHECK` is enough for a fixed six-value list. Learner first listed `fail-retry` and `replay` as states; corrected — a retried job waits in the same state as a new job, distinguished only by `run_at`. For a dependent whose upstream died, learner tried "stays blocked", then "reuse dead", then reached `cancelled`: a job that never ran needs a different resurrection path (replay the upstream, not the job). Learner then found its exit goes back to `blocked`.
+**Gotchas we hit:** The learner proposed a stored `claimable` column. The decisive argument: nothing writes to the row when `run_at` passes, so the flag is stale by construction. Also: a `CHECK` cannot compare against the old row value, so "`attempts` never goes down" cannot be a constraint — the guard goes in the `WHERE` clause (compare-and-set).
+**Learner questions:**
+- "Are we competing with Kafka/RabbitMQ, or depending on them?" → we build the queue; Postgres is the engine. The comparison table is interview vocabulary and design justification, not an integration list.
+- "Why is a delay needed at all, and who sets `run_at`?" → no delay by default (`now()`); producers can ask for one, and the server computes backoff. Without it, a failing job retries in a hot loop.
+- "If a worker crashes, should we redo the job? How can we know?" → we cannot know whether the side effect happened, so we redeliver (at-least-once) and require idempotent handlers.
+**Interview soundbite:** "A queue is a state machine in one table: six states, and every transition is a compare-and-set `UPDATE` on the expected current state. Claimability is derived from state plus `run_at`, never stored, and attempts count deliveries — so a job that crashes its worker still runs out of budget."

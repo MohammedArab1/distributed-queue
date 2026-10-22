@@ -145,7 +145,7 @@ The AI ticks these off (`[x]`) as steps are completed.
 - [x] 1.3 Config, logging, and a server that connects to Postgres
 
 **Phase 2 — Data model**
-- [ ] 2.1 Design the job lifecycle (state machine)
+- [x] 2.1 Design the job lifecycle (state machine)
 - [ ] 2.2 First migration: the `jobs` table
 
 **Phase 3 — Storage layer**
