@@ -89,3 +89,23 @@
 - "Wouldn't `TEXT` + `CHECK` also require a schema update?" → Yes. The difference is that replacing a `CHECK` is ordinary reversible DDL; changing an enum is a type-level operation with transaction and value-removal limits.
 - "Should migrations run in CD?" → Yes, as an explicit step before the new server version rolls out, using the same `migrate` binary as every other environment.
   **Interview soundbite:** "Schema changes are versioned SQL embedded in the binary and applied by a dedicated migrate command — never by the server — so local, CI, and production run the same pinned runner, and the long-lived server never needs DDL rights."
+
+  ## Step 3.1 — Store package, Enqueue/GetJob, test database helper (2026-10-29)
+
+  **Built:** `internal/store/store.go` with `DBTX`, `Store`, `New`, `InTx` and the three sentinel errors; `internal/store/jobs.go` with `State` constants, `Job`, the shared `jobColumnNames`/`jobColumns`/`scanJob`/`scanJobs` helpers, `Enqueue` and `GetJob`; `internal/testutil/postgres.go` creating one migrated database per test; `internal/store/jobs_test.go` in `package store_test` covering the round trip, defaults, payload JSON and `ErrNotFound`; `JQ_KEEP_TEST_DB` documented in `.env.example`.
+  **Key concepts:**
+  - The store pattern puts every SQL statement behind a typed method; callers never build SQL.
+  - pgx: `QueryRow(...).Scan(...)`, `Query` plus `Next`/`Err`, and `pgx.ErrNoRows` as a sentinel translated at the store boundary.
+  - Nullable columns map to pointers; `nil` means SQL `NULL`, which is different from an empty string or zero time.
+  - One column list plus one scanner prevents query and scan order from drifting when a column is added.
+  - Go interfaces are implicit: `DBTX` is satisfied by both `*pgxpool.Pool` and `pgx.Tx`, so the same methods run inside or outside a transaction. `InTx` uses `pgx.BeginFunc` and joins an existing transaction.
+  - Queue correctness is database behavior: constraints, locks and MVCC cannot be reproduced by a mock.
+  - Each test gets a fresh `jq_test_<16 hex>` database, migrated through the production `store.Migrate`; `t.Helper` and `t.Cleanup` keep setup and teardown reliable.
+  - External test packages (`package store_test`) avoid the `store → testutil → store` cycle while preserving the testutil-imports-store dependency direction.
+    **Design discussion:** The learner asked whether `Store` should be an interface and whether moving `Migrate` into its own package would be more idiomatic than using `package store_test`. A concrete `Store` is right until a second implementation exists; `DBTX` is the exception because the pool and a transaction are two implementations. Moving `Migrate` would break this cycle but not the general one, because `testutil` will later need `store` for seeding. For isolation the learner proposed embedded Postgres and a shared container with a database per test. Embedded Postgres was rejected (extra binary, platform behavior, version lag); the chosen design is the Compose Postgres plus a freshly created and migrated database per test, with template databases as a later optimization.
+    **Gotchas we hit:** The first `make test` failed because the Compose containers had stopped; the helper printed the intended hint, `is Postgres running? try make up`, and `make up` restored them. The volume persisted the `jobqueue` schema, so `make migrate-up` then reported `no migrations to apply`. The kept-database drill created two databases; both were inspected and dropped manually.
+    **Learner questions:**
+  - "Should the store be an interface?" → Not now. Define interfaces where they are consumed, and only when a second implementation exists. `DBTX` has two, which is why it exists.
+  - "Would moving `Migrate` to its own package be more idiomatic?" → It removes this specific cycle, but not the general one, and it splits the schema from the package that owns it. External test packages are the standard Go answer.
+  - "What about embedded-postgres?" → Rejected. It downloads and runs a real Postgres binary, adds a dependency, and can lag the pinned version; Compose already provides Postgres 17.
+    **Interview soundbite:** "The store package owns all SQL behind a typed API, and its methods accept a small `DBTX` interface satisfied by both the pool and a transaction, so the same code runs inside or outside a transaction. Tests run against real Postgres with a freshly created and migrated database per test, because constraints and locking are the behavior under test."

@@ -153,7 +153,7 @@ The AI ticks these off (`[x]`) as steps are completed.
 
 **Phase 3 — Storage layer**
 
-- [ ] 3.1 Store package, Enqueue/GetJob, test database helper
+- [x] 3.1 Store package, Enqueue/GetJob, test database helper
 - [ ] 3.2 Claiming jobs safely with `FOR UPDATE SKIP LOCKED`
 - [ ] 3.3 Completing and failing jobs, with fencing
 
