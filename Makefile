@@ -15,7 +15,7 @@ lint:
 run-server:
 	go run ./cmd/server
 
-.PHONY: up down reset-db psql redis-cli
+.PHONY: up down reset-db migrate-up migrate-down migrate-status psql redis-cli
 
 up:
 	docker compose up -d --wait
@@ -25,6 +25,16 @@ down:
 
 reset-db:
 	docker compose down -v && docker compose up -d --wait
+	$(MAKE) migrate-up
+
+migrate-up:
+	go run ./cmd/migrate up
+
+migrate-down:
+	go run ./cmd/migrate down
+
+migrate-status:
+	go run ./cmd/migrate status
 
 psql:
 	docker compose exec postgres psql -U jobqueue jobqueue

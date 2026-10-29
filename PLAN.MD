@@ -18,32 +18,32 @@ Put this file at the root of the repository as `PLAN.md`, then point your AI ass
 ### Learner profile (the AI must calibrate to this)
 
 - **Go:** has written Go before but is rusty. Refresh syntax and idioms briefly the first time they come up. Don't assume they remember `context`, interfaces, error wrapping, embedding, or generics.
-- **PostgreSQL and Docker:** comfortable. Skip basic SQL and basic `docker compose`. **Do** explain Postgres *concurrency* features (row locks, `SKIP LOCKED`, isolation levels, MVCC, advisory locks), because they're new in this context.
+- **PostgreSQL and Docker:** comfortable. Skip basic SQL and basic `docker compose`. **Do** explain Postgres _concurrency_ features (row locks, `SKIP LOCKED`, isolation levels, MVCC, advisory locks), because they're new in this context.
 - **Concurrent programming:** new. This is the biggest learning goal. Explain goroutines, channels, `select`, mutexes, `sync.WaitGroup`, `context` cancellation, data races, deadlocks and goroutine leaks slowly and concretely, with runnable examples.
 - **Scope:** core features only. No Kubernetes, no transactional outbox, no full chaos-engineering suite. A simple crash-recovery test is included because it proves the core at-least-once guarantee.
 
 ### Roadmap at a glance
 
-| Phase | What gets built | The big idea you learn |
-|---|---|---|
-| 1 | Repo, Docker Compose, config, Go refresher | Go project structure, `context`, error wrapping |
-| 2 | Job state machine + first migration | Design states before code; let the DB enforce invariants |
-| 3 | Postgres storage layer | `FOR UPDATE SKIP LOCKED`, atomic claims, fencing |
-| 4 | Idempotent enqueue | Idempotency keys, unique indexes, `ON CONFLICT` |
-| 5 | gRPC API + CLI | Protobuf contracts, status codes, layering |
-| 6 | Concurrency primer (runnable lessons) | Goroutines, channels, `select`, races, semaphores |
-| 7 | Worker pool | Backpressure, bounded concurrency, panic recovery |
-| 8 | Leases, heartbeats, reaper | Failure detection, at-least-once delivery, zombies |
-| 9 | Graceful shutdown | Signals, draining, two-context pattern |
-| 10 | Retries with backoff + jitter | Thundering herds, testable randomness |
-| 11 | Dead-letter queue + replay | Poison messages, error classification |
-| 12 | Priorities + delayed jobs + query-plan lab | Index design, `EXPLAIN ANALYZE`, clock skew |
-| 13 | Cron jobs + leader election | Advisory locks, "never trust leader election alone" |
-| 14 | DAG workflows | Topological sort, lost updates, recursive CTEs |
-| 15 | Prometheus metrics + Grafana | Counters/gauges/histograms, cardinality, PromQL |
-| 16 | Benchmarks + profiling | Little's Law, pprof, finding bottlenecks |
-| 17 | Redis fast-scheduling layer | Dual-write problem, derived indexes, reconciliation |
-| 18 | Crash test, docs, resume, interview prep | Verifying guarantees; telling the story |
+| Phase | What gets built                            | The big idea you learn                                   |
+| ----- | ------------------------------------------ | -------------------------------------------------------- |
+| 1     | Repo, Docker Compose, config, Go refresher | Go project structure, `context`, error wrapping          |
+| 2     | Job state machine + first migration        | Design states before code; let the DB enforce invariants |
+| 3     | Postgres storage layer                     | `FOR UPDATE SKIP LOCKED`, atomic claims, fencing         |
+| 4     | Idempotent enqueue                         | Idempotency keys, unique indexes, `ON CONFLICT`          |
+| 5     | gRPC API + CLI                             | Protobuf contracts, status codes, layering               |
+| 6     | Concurrency primer (runnable lessons)      | Goroutines, channels, `select`, races, semaphores        |
+| 7     | Worker pool                                | Backpressure, bounded concurrency, panic recovery        |
+| 8     | Leases, heartbeats, reaper                 | Failure detection, at-least-once delivery, zombies       |
+| 9     | Graceful shutdown                          | Signals, draining, two-context pattern                   |
+| 10    | Retries with backoff + jitter              | Thundering herds, testable randomness                    |
+| 11    | Dead-letter queue + replay                 | Poison messages, error classification                    |
+| 12    | Priorities + delayed jobs + query-plan lab | Index design, `EXPLAIN ANALYZE`, clock skew              |
+| 13    | Cron jobs + leader election                | Advisory locks, "never trust leader election alone"      |
+| 14    | DAG workflows                              | Topological sort, lost updates, recursive CTEs           |
+| 15    | Prometheus metrics + Grafana               | Counters/gauges/histograms, cardinality, PromQL          |
+| 16    | Benchmarks + profiling                     | Little's Law, pprof, finding bottlenecks                 |
+| 17    | Redis fast-scheduling layer                | Dual-write problem, derived indexes, reconciliation      |
+| 18    | Crash test, docs, resume, interview prep   | Verifying guarantees; telling the story                  |
 
 ---
 
@@ -52,11 +52,11 @@ Put this file at the root of the repository as `PLAN.md`, then point your AI ass
 ### 0.1 Ground rules
 
 1. **One step at a time.** Work only on the current step from the Progress Tracker (0.5). Never start the next step until the learner says so.
-2. **The learner designs before you build.** Assume the learner has not read this file's implementation notes (`Design decisions`, `Build`, `Walkthrough focus`). Before you write any code for a step, ask the learner how *they* think the step's problem should be solved — this is a learning opportunity, not a formality. If their answer is wrong or weak, say exactly what is missing or broken, then ask them to think through a better solution. Do not give the answer away, and do not answer your own question. Build only after the learner understands and can explain the correct design. The full protocol is in 0.2.
+2. **The learner designs before you build.** Assume the learner has not read this file's implementation notes (`Design decisions`, `Build`, `Walkthrough focus`). Before you write any code for a step, ask the learner how _they_ think the step's problem should be solved — this is a learning opportunity, not a formality. If their answer is wrong or weak, say exactly what is missing or broken, then ask them to think through a better solution. Do not give the answer away, and do not answer your own question. Build only after the learner understands and can explain the correct design. The full protocol is in 0.2.
 3. **Follow the plan literally.** Use the exact file paths, package names, table and column names, RPC names, metric names and env vars defined here. Section 3 is the master list. Later steps depend on these names being exact.
 4. **Don't add features, libraries or abstractions the step doesn't ask for.** If something in the plan looks wrong or missing, stop, explain the problem, propose a fix, and wait for approval. If approved, edit `PLAN.md` and record it in [Appendix D: Plan changes](#appendix-d-plan-changes).
 5. **Never leave the build broken.** At the end of every step, `go build ./...`, `make lint` and `go test -race ./...` must pass (once tests exist). (`make lint` runs `go vet` on everything except `examples/`, which holds deliberately buggy teaching code from Phase 6.) If a test is flaky, fix the cause; don't skip the test.
-6. **Small, readable code.** Prefer plain, explicit code over clever code. Aim for functions under ~50 lines. Comments explain *why*, not *what*. Every exported identifier gets a doc comment.
+6. **Small, readable code.** Prefer plain, explicit code over clever code. Aim for functions under ~50 lines. Comments explain _why_, not _what_. Every exported identifier gets a doc comment.
 7. **Errors:** always handle them. Wrap with context: `fmt.Errorf("claim jobs: %w", err)`. Never `panic` in library code. Never discard an error with `_` without a comment saying why.
 8. **Contexts:** every function that does I/O or can block takes `ctx context.Context` as its first parameter.
 9. **Goroutines:** every goroutine must have (a) an owner, (b) a way to be told to stop (usually a context), and (c) a way for the owner to wait for it to finish (`sync.WaitGroup`, `errgroup`, or a `done` channel). In the walkthrough, say out loud who owns each goroutine and how it stops.
@@ -71,22 +71,22 @@ Put this file at the root of the repository as `PLAN.md`, then point your AI ass
 
 Every step in this plan has these sections: **Problem**, **Teach**, **Design decisions**, **Build**, **Verify**, **Walkthrough focus**, **Check your understanding**, **Done when**. Turn them into this conversation flow. Note the **DESIGN** stage: the learner designs the solution out loud before any code is written, and that design is a hard gate on building.
 
-| Stage | What the AI does | Wait for the learner? |
-|---|---|---|
-| **1. FRAME** | In 3–6 sentences: what we're building and the **Problem** it solves. If the step says "Demo the problem", run it so the learner *sees* the problem. | No |
-| **2. TEACH** | Teach every item in **Teach**. For each one: plain definition → analogy or tiny example → why it matters *here*. **Keep the plan's solution out of it:** do not read out the **Design decisions** yet, and do not jump to what the **Build** notes say. End with 1–2 **Predict** questions (e.g. "What do you think happens if two workers run this query at the same instant?"). | **Yes.** Ask: "Any questions before you design this?" |
-| **3. DESIGN** | Ask the learner how *they* think this step's problem should be solved — before any code exists. Start with the step's first major design decision. Judge their answer against the plan's **Design decisions**: a correct answer gets confirmed and a follow-up ("why does it work?"); a wrong or weak answer gets a plain explanation of what is missing or broken — **without giving the answer away** — then the same question again in a new form. Repeat until the learner can explain and defend the correct design. Then reveal the plan's full design, tie it back to what they proposed, and fill the gaps. | **Yes, and this is a hard gate. Never start BUILD before it passes.** |
-| **4. BUILD** | Implement the **Build** list in order. Narrate briefly as you go ("Now the claim query, which is the heart of the queue"). | No |
-| **5. VERIFY** | Run every command in **Verify**. Show the relevant output and explain what it proves. | No |
-| **6. WALKTHROUGH** | Walk through what you built following the data flow ("a job enters here → goes here → ends here"). Cover each **Walkthrough focus** item. For key snippets: what it does, why it's written this way, what breaks if you remove it. Answer the Predict questions. | No |
-| **7. CHECK** | Ask the **Check your understanding** questions one or two at a time. Confirm what's right, gently correct what's wrong, and point to the line of code that proves it. The learner may say "skip". | **Yes** |
-| **8. WRAP UP** | Append to `docs/LEARNING_LOG.md` (template 0.3), tick the step in the Progress Tracker, commit: `git commit -m "Step X.Y: <title>"`. Then say: "Step X.Y done. Next: X.Z — <title>. Say 'next' when ready." | **Yes** |
+| Stage              | What the AI does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Wait for the learner?                                                 |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| **1. FRAME**       | In 3–6 sentences: what we're building and the **Problem** it solves. If the step says "Demo the problem", run it so the learner _sees_ the problem.                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | No                                                                    |
+| **2. TEACH**       | Teach every item in **Teach**. For each one: plain definition → analogy or tiny example → why it matters _here_. **Keep the plan's solution out of it:** do not read out the **Design decisions** yet, and do not jump to what the **Build** notes say. End with 1–2 **Predict** questions (e.g. "What do you think happens if two workers run this query at the same instant?").                                                                                                                                                                                                                                   | **Yes.** Ask: "Any questions before you design this?"                 |
+| **3. DESIGN**      | Ask the learner how _they_ think this step's problem should be solved — before any code exists. Start with the step's first major design decision. Judge their answer against the plan's **Design decisions**: a correct answer gets confirmed and a follow-up ("why does it work?"); a wrong or weak answer gets a plain explanation of what is missing or broken — **without giving the answer away** — then the same question again in a new form. Repeat until the learner can explain and defend the correct design. Then reveal the plan's full design, tie it back to what they proposed, and fill the gaps. | **Yes, and this is a hard gate. Never start BUILD before it passes.** |
+| **4. BUILD**       | Implement the **Build** list in order. Narrate briefly as you go ("Now the claim query, which is the heart of the queue").                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | No                                                                    |
+| **5. VERIFY**      | Run every command in **Verify**. Show the relevant output and explain what it proves.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | No                                                                    |
+| **6. WALKTHROUGH** | Walk through what you built following the data flow ("a job enters here → goes here → ends here"). Cover each **Walkthrough focus** item. For key snippets: what it does, why it's written this way, what breaks if you remove it. Answer the Predict questions.                                                                                                                                                                                                                                                                                                                                                    | No                                                                    |
+| **7. CHECK**       | Ask the **Check your understanding** questions one or two at a time. Confirm what's right, gently correct what's wrong, and point to the line of code that proves it. The learner may say "skip".                                                                                                                                                                                                                                                                                                                                                                                                                   | **Yes**                                                               |
+| **8. WRAP UP**     | Append to `docs/LEARNING_LOG.md` (template 0.3), tick the step in the Progress Tracker, commit: `git commit -m "Step X.Y: <title>"`. Then say: "Step X.Y done. Next: X.Z — <title>. Say 'next' when ready."                                                                                                                                                                                                                                                                                                                                                                                                         | **Yes**                                                               |
 
 **How the DESIGN stage works**
 
 - **One question per major decision.** Most steps need one design question. Big steps (for example 3.2 claim safety, 8.2 heartbeats, 14.3 unblocking) have two or three separate hard decisions: ask about them one at a time, and build only after all of them are settled.
 - **Ask open questions.** "How should we make sure two workers never take the same job?" is good. "Should we use `SKIP LOCKED`?" is bad: it contains the answer.
-- **Judge understanding, not vocabulary.** If the learner only repeats words from TEACH, ask them to explain the mechanism or apply it to this exact step. If TEACH already named the mechanism, the design question becomes "how would *you* apply it here, and why does it work?" — the learner still has to show they understand it.
+- **Judge understanding, not vocabulary.** If the learner only repeats words from TEACH, ask them to explain the mechanism or apply it to this exact step. If TEACH already named the mechanism, the design question becomes "how would _you_ apply it here, and why does it work?" — the learner still has to show they understand it.
 - **A wrong answer is the point, never a failure.** Say what is wrong in plain words ("that read-then-write pair has a gap: between the `SELECT` and the `UPDATE`, another worker can claim the same row"). Then ask: "How would you close that gap?" Let them try again.
 - **Hints in layers when the learner is stuck.** (1) Restate the problem more precisely. (2) Point at the constraint they missed. (3) Suggest where to look. Give the full answer only after several honest attempts — and even then, ask the learner to restate the design in their own words before you build.
 - **Nothing gets built until this stage passes.** No code, no SQL, no proto edits, no files, no commands that change the repository or the database.
@@ -116,6 +116,7 @@ After every step, append this to `docs/LEARNING_LOG.md`:
 
 ```markdown
 ## Step X.Y — <title> (<YYYY-MM-DD>)
+
 **Built:** 1–3 bullets of what exists now that didn't before.
 **Key concepts:** 3–6 one-line bullets, in the learner's words where possible.
 **Design discussion:** the design question asked, what the learner first proposed, and how their reasoning changed.
@@ -140,87 +141,105 @@ teaching protocol in section 0.2.
 The AI ticks these off (`[x]`) as steps are completed.
 
 **Phase 1 — Project setup and Go refresher**
+
 - [x] 1.1 Tooling check and repository skeleton
 - [x] 1.2 Local infrastructure with Docker Compose
 - [x] 1.3 Config, logging, and a server that connects to Postgres
 
 **Phase 2 — Data model**
+
 - [x] 2.1 Design the job lifecycle (state machine)
-- [ ] 2.2 First migration: the `jobs` table
+- [x] 2.2 First migration: the `jobs` table
 
 **Phase 3 — Storage layer**
+
 - [ ] 3.1 Store package, Enqueue/GetJob, test database helper
 - [ ] 3.2 Claiming jobs safely with `FOR UPDATE SKIP LOCKED`
 - [ ] 3.3 Completing and failing jobs, with fencing
 
 **Phase 4 — Idempotency**
+
 - [ ] 4.1 Idempotent enqueue
 
 **Phase 5 — gRPC API**
+
 - [ ] 5.1 Protobuf contract and code generation
 - [ ] 5.2 Service layer and validation
 - [ ] 5.3 gRPC server and error mapping
 - [ ] 5.4 `jqctl` command-line tool
 
 **Phase 6 — Concurrency primer**
+
 - [ ] 6.1 Goroutines, WaitGroups, channels
 - [ ] 6.2 `select`, timeouts, and `context`
 - [ ] 6.3 Shared memory: races, mutexes, atomics
 - [ ] 6.4 Patterns and pitfalls: semaphores, errgroup, leaks, deadlocks
 
 **Phase 7 — Worker**
+
 - [ ] 7.1 Handler registry and demo handlers
 - [ ] 7.2 Worker pool: fetch loop and semaphore
 - [ ] 7.3 Worker integration tests and running it for real
 
 **Phase 8 — Leases and at-least-once delivery**
+
 - [ ] 8.1 Stuck jobs and the lease reaper
 - [ ] 8.2 Heartbeats and lost-lease cancellation
 - [ ] 8.3 Idempotent handlers and the crash demo
 
 **Phase 9 — Graceful shutdown**
+
 - [ ] 9.1 Worker graceful shutdown and job release
 - [ ] 9.2 Server graceful shutdown and health checks
 
 **Phase 10 — Retries**
+
 - [ ] 10.1 Backoff package and simulation
 - [ ] 10.2 Wire backoff into FailJob
 
 **Phase 11 — Dead-letter queue**
+
 - [ ] 11.1 Max attempts, non-retryable errors, the `dead` state
 - [ ] 11.2 Admin API and CLI: list and replay
 
 **Phase 12 — Priority and delayed jobs**
+
 - [ ] 12.1 Priority
 - [ ] 12.2 Delayed jobs
 - [ ] 12.3 Query-plan lab with `EXPLAIN ANALYZE`
 
 **Phase 13 — Cron jobs**
+
 - [ ] 13.1 Leader election with advisory locks
 - [ ] 13.2 Cron schedules table and scheduler loop
 - [ ] 13.3 Cron admin API and CLI
 
 **Phase 14 — DAG workflows**
+
 - [ ] 14.1 DAG validation (pure Go)
 - [ ] 14.2 Schema and workflow submission
 - [ ] 14.3 Unblocking children when a job succeeds
 - [ ] 14.4 Failure propagation and workflow replay
 
 **Phase 15 — Observability**
+
 - [ ] 15.1 Metrics in the server and worker
 - [ ] 15.2 Prometheus, Grafana and the dashboard
 
 **Phase 16 — Benchmarking**
+
 - [ ] 16.1 Bench tool
 - [ ] 16.2 Baseline runs, profiling and tuning
 
 **Phase 17 — Redis fast scheduling**
+
 - [ ] 17.1 Design: Redis as a derived index, and the dual-write problem
 - [ ] 17.2 Implement the Redis index: notify, promote, fetch
 - [ ] 17.3 Reconciler and failure drills
 - [ ] 17.4 Re-benchmark and compare
 
 **Phase 18 — Prove it and tell the story**
+
 - [ ] 18.1 Crash-recovery test
 - [ ] 18.2 README, architecture doc, resume bullet, interview prep
 
@@ -230,7 +249,7 @@ The AI ticks these off (`[x]`) as steps are completed.
 
 ### 1.1 What we're building
 
-A **durable job queue**. Producers submit *jobs* (a type like `send_email` plus a JSON payload). The queue stores them durably in PostgreSQL. Worker processes ask for jobs, run them, and report success or failure. The system retries failures with backoff, quarantines jobs that keep failing (dead-letter queue), supports priorities, delays, cron schedules and multi-step workflows (DAGs), survives worker crashes without losing jobs, and exposes metrics.
+A **durable job queue**. Producers submit _jobs_ (a type like `send_email` plus a JSON payload). The queue stores them durably in PostgreSQL. Worker processes ask for jobs, run them, and report success or failure. The system retries failures with backoff, quarantines jobs that keep failing (dead-letter queue), supports priorities, delays, cron schedules and multi-step workflows (DAGs), survives worker crashes without losing jobs, and exposes metrics.
 
 ### 1.2 Architecture
 
@@ -265,7 +284,7 @@ flowchart LR
 ### 1.3 Life of a job (the happy path and the crash path)
 
 1. A producer calls `Enqueue`. The server inserts a row with `state = 'pending'`.
-2. A worker calls `FetchJobs`. The server atomically *claims* rows: `pending → running`, `attempts + 1`, sets a **lease** (`lease_owner`, `lease_expires_at`), and returns them.
+2. A worker calls `FetchJobs`. The server atomically _claims_ rows: `pending → running`, `attempts + 1`, sets a **lease** (`lease_owner`, `lease_expires_at`), and returns them.
 3. The worker runs the handler. While it runs, the worker sends **heartbeats** that extend the lease.
 4. On success, `CompleteJob` → `succeeded`. On failure, `FailJob` → back to `pending` with a backoff delay, or to `dead` if out of attempts.
 5. **Crash path:** if the worker dies, heartbeats stop, the lease expires, and the server's **reaper** puts the job back to `pending`. Another worker runs it. That's **at-least-once delivery**.
@@ -287,22 +306,22 @@ The AI should cite these by number when explaining decisions.
 
 ## 2. Tech stack
 
-| Concern | Choice | Notes |
-|---|---|---|
-| Language | Go, latest stable (must be ≥ 1.24) | Check with `go version`. |
-| Postgres driver | `github.com/jackc/pgx/v5` (+ `pgxpool`, `pgx/v5/stdlib` for goose) | The standard high-performance driver. |
-| Migrations | `github.com/pressly/goose/v3`, used as a library; SQL files embedded with `//go:embed` | Plain SQL files. Use goose's `Provider` API (`goose.NewProvider`). Verify the API with `go doc github.com/pressly/goose/v3.NewProvider`. |
-| RPC | `google.golang.org/grpc`, `google.golang.org/protobuf` | Use `grpc.NewClient` (not the deprecated `grpc.Dial`). |
-| Code generation | `buf` CLI + `protoc-gen-go` + `protoc-gen-go-grpc` (local plugins) | No Buf account needed. |
-| Redis client | `github.com/redis/go-redis/v9` | Phase 17. |
-| Metrics | `github.com/prometheus/client_golang` | Phase 15. |
-| Cron parsing | `github.com/robfig/cron/v3` (parser only) | Widely used but unmaintained since 2020; we only call `ParseStandard` and `Schedule.Next`, wrapped in `recover`. `github.com/netresearch/go-cron` is an API-compatible maintained fork if you prefer. |
-| Concurrency helpers | `golang.org/x/sync/errgroup` | |
-| Logging | `log/slog` (standard library) | Text handler in dev. |
-| CLI parsing | standard library `flag` | No cobra. |
-| Tests | standard `testing` + `github.com/stretchr/testify/require`; **real Postgres/Redis** from Docker Compose; `google.golang.org/grpc/test/bufconn` for in-memory gRPC | No database mocks: queue behaviour *is* database behaviour. |
-| Infra | Docker Compose: `postgres:17`, `redis:7`, `prom/prometheus`, `grafana/grafana` | `postgres:17` is pinned because the `postgres:18` image changed its data-directory layout. |
-| Manual tools | `psql` (via `docker compose exec`), `redis-cli`, `grpcurl`, `jq` | |
+| Concern             | Choice                                                                                                                                                            | Notes                                                                                                                                                                                                 |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Language            | Go, latest stable (must be ≥ 1.24)                                                                                                                                | Check with `go version`.                                                                                                                                                                              |
+| Postgres driver     | `github.com/jackc/pgx/v5` (+ `pgxpool`, `pgx/v5/stdlib` for goose)                                                                                                | The standard high-performance driver.                                                                                                                                                                 |
+| Migrations          | `github.com/pressly/goose/v3`, used as a library; SQL files embedded with `//go:embed`                                                                            | Plain SQL files. Use goose's `Provider` API (`goose.NewProvider`). Verify the API with `go doc github.com/pressly/goose/v3.NewProvider`.                                                              |
+| RPC                 | `google.golang.org/grpc`, `google.golang.org/protobuf`                                                                                                            | Use `grpc.NewClient` (not the deprecated `grpc.Dial`).                                                                                                                                                |
+| Code generation     | `buf` CLI + `protoc-gen-go` + `protoc-gen-go-grpc` (local plugins)                                                                                                | No Buf account needed.                                                                                                                                                                                |
+| Redis client        | `github.com/redis/go-redis/v9`                                                                                                                                    | Phase 17.                                                                                                                                                                                             |
+| Metrics             | `github.com/prometheus/client_golang`                                                                                                                             | Phase 15.                                                                                                                                                                                             |
+| Cron parsing        | `github.com/robfig/cron/v3` (parser only)                                                                                                                         | Widely used but unmaintained since 2020; we only call `ParseStandard` and `Schedule.Next`, wrapped in `recover`. `github.com/netresearch/go-cron` is an API-compatible maintained fork if you prefer. |
+| Concurrency helpers | `golang.org/x/sync/errgroup`                                                                                                                                      |                                                                                                                                                                                                       |
+| Logging             | `log/slog` (standard library)                                                                                                                                     | Text handler in dev.                                                                                                                                                                                  |
+| CLI parsing         | standard library `flag`                                                                                                                                           | No cobra.                                                                                                                                                                                             |
+| Tests               | standard `testing` + `github.com/stretchr/testify/require`; **real Postgres/Redis** from Docker Compose; `google.golang.org/grpc/test/bufconn` for in-memory gRPC | No database mocks: queue behaviour _is_ database behaviour.                                                                                                                                           |
+| Infra               | Docker Compose: `postgres:17`, `redis:7`, `prom/prometheus`, `grafana/grafana`                                                                                    | `postgres:17` is pinned because the `postgres:18` image changed its data-directory layout.                                                                                                            |
+| Manual tools        | `psql` (via `docker compose exec`), `redis-cli`, `grpcurl`, `jq`                                                                                                  |                                                                                                                                                                                                       |
 
 ---
 
@@ -371,52 +390,52 @@ jobqueue/
 
 ### 3.2 Environment variables
 
-| Variable | Default | Used by | Introduced |
-|---|---|---|---|
-| `JQ_DATABASE_URL` | `postgres://jobqueue:jobqueue@localhost:5433/jobqueue?sslmode=disable` | server, migrate, worker (demo handler only), bench | 1.3 |
-| `JQ_TEST_DATABASE_URL` | `postgres://jobqueue:jobqueue@localhost:5433/postgres?sslmode=disable` | tests (admin connection used to create per-test DBs) | 3.1 |
-| `JQ_LOG_LEVEL` | `info` | all | 1.3 |
-| `JQ_GRPC_LISTEN_ADDR` | `:50051` | server | 5.3 |
-| `JQ_SERVER_ADDR` | `localhost:50051` | worker, jqctl, bench | 5.4 |
-| `JQ_LEASE_DURATION` | `30s` | server | 5.2 |
-| `JQ_REAPER_INTERVAL` | `5s` | server | 8.1 |
-| `JQ_WORKER_ID` | `<hostname>-<pid>` | worker | 7.2 |
-| `JQ_WORKER_QUEUES` | `default` (comma-separated, in priority order) | worker | 7.2 |
-| `JQ_WORKER_CONCURRENCY` | `10` | worker | 7.2 |
-| `JQ_WORKER_SHUTDOWN_TIMEOUT` | `25s` | worker | 9.1 |
-| `JQ_SERVER_SHUTDOWN_TIMEOUT` | `10s` | server | 9.2 |
-| `JQ_BACKOFF_BASE` | `1s` | server | 10.2 |
-| `JQ_BACKOFF_MAX` | `10m` | server | 10.2 |
-| `JQ_METRICS_ADDR` | server `:2112`, worker `:2113` | server, worker | 15.1 |
-| `JQ_REDIS_ADDR` | `localhost:6380` | server | 17.2 |
-| `JQ_SCHEDULER_MODE` | `postgres` (`postgres` or `redis`) | server | 17.2 |
+| Variable                     | Default                                                                | Used by                                              | Introduced |
+| ---------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------- | ---------- |
+| `JQ_DATABASE_URL`            | `postgres://jobqueue:jobqueue@localhost:5433/jobqueue?sslmode=disable` | server, migrate, worker (demo handler only), bench   | 1.3        |
+| `JQ_TEST_DATABASE_URL`       | `postgres://jobqueue:jobqueue@localhost:5433/postgres?sslmode=disable` | tests (admin connection used to create per-test DBs) | 3.1        |
+| `JQ_LOG_LEVEL`               | `info`                                                                 | all                                                  | 1.3        |
+| `JQ_GRPC_LISTEN_ADDR`        | `:50051`                                                               | server                                               | 5.3        |
+| `JQ_SERVER_ADDR`             | `localhost:50051`                                                      | worker, jqctl, bench                                 | 5.4        |
+| `JQ_LEASE_DURATION`          | `30s`                                                                  | server                                               | 5.2        |
+| `JQ_REAPER_INTERVAL`         | `5s`                                                                   | server                                               | 8.1        |
+| `JQ_WORKER_ID`               | `<hostname>-<pid>`                                                     | worker                                               | 7.2        |
+| `JQ_WORKER_QUEUES`           | `default` (comma-separated, in priority order)                         | worker                                               | 7.2        |
+| `JQ_WORKER_CONCURRENCY`      | `10`                                                                   | worker                                               | 7.2        |
+| `JQ_WORKER_SHUTDOWN_TIMEOUT` | `25s`                                                                  | worker                                               | 9.1        |
+| `JQ_SERVER_SHUTDOWN_TIMEOUT` | `10s`                                                                  | server                                               | 9.2        |
+| `JQ_BACKOFF_BASE`            | `1s`                                                                   | server                                               | 10.2       |
+| `JQ_BACKOFF_MAX`             | `10m`                                                                  | server                                               | 10.2       |
+| `JQ_METRICS_ADDR`            | server `:2112`, worker `:2113`                                         | server, worker                                       | 15.1       |
+| `JQ_REDIS_ADDR`              | `localhost:6380`                                                       | server                                               | 17.2       |
+| `JQ_SCHEDULER_MODE`          | `postgres` (`postgres` or `redis`)                                     | server                                               | 17.2       |
 
 ### 3.3 Ports
 
-| Port | What |
-|---|---|
+| Port        | What                                                                   |
+| ----------- | ---------------------------------------------------------------------- |
 | 5433 → 5432 | Postgres (host 5433 avoids clashing with a locally installed Postgres) |
-| 6380 → 6379 | Redis |
-| 50051 | gRPC server (second replica for experiments: 50052) |
-| 2112 | server `/metrics` and `/debug/pprof` (second replica: 2122) |
-| 2113–2116 | worker `/metrics` (one port per local worker process) |
-| 9090 | Prometheus UI |
-| 3000 | Grafana UI |
+| 6380 → 6379 | Redis                                                                  |
+| 50051       | gRPC server (second replica for experiments: 50052)                    |
+| 2112        | server `/metrics` and `/debug/pprof` (second replica: 2122)            |
+| 2113–2116   | worker `/metrics` (one port per local worker process)                  |
+| 9090        | Prometheus UI                                                          |
+| 3000        | Grafana UI                                                             |
 
 ### 3.4 Database
 
 **Migrations (never edit a migration after it has been applied; add a new one):**
 
-| File | Step | Purpose |
-|---|---|---|
-| `0001_create_jobs.sql` | 2.2 | `jobs` table, ready index, invariant checks |
-| `0002_add_idempotency_key.sql` | 4.1 | `idempotency_key` + partial unique index |
-| `0003_add_running_lease_index.sql` | 8.1 | index for the reaper |
-| `0004_create_demo_effects.sql` | 8.3 | table simulating an external system (idempotency demo) |
-| `0005_add_state_queue_index.sql` | 11.2 | index for listing/replaying by state |
-| `0006_add_priority.sql` | 12.1 | `priority` column, rebuilt ready index |
-| `0007_create_cron_schedules.sql` | 13.2 | cron schedules |
-| `0008_create_workflows.sql` | 14.2 | workflows, dependency edges, counters |
+| File                               | Step | Purpose                                                |
+| ---------------------------------- | ---- | ------------------------------------------------------ |
+| `0001_create_jobs.sql`             | 2.2  | `jobs` table, ready index, invariant checks            |
+| `0002_add_idempotency_key.sql`     | 4.1  | `idempotency_key` + partial unique index               |
+| `0003_add_running_lease_index.sql` | 8.1  | index for the reaper                                   |
+| `0004_create_demo_effects.sql`     | 8.3  | table simulating an external system (idempotency demo) |
+| `0005_add_state_queue_index.sql`   | 11.2 | index for listing/replaying by state                   |
+| `0006_add_priority.sql`            | 12.1 | `priority` column, rebuilt ready index                 |
+| `0007_create_cron_schedules.sql`   | 13.2 | cron schedules                                         |
+| `0008_create_workflows.sql`        | 14.2 | workflows, dependency edges, counters                  |
 
 **Final `jobs` columns:** `id`, `queue`, `type`, `payload`, `state`, `priority`, `run_at`, `attempts`, `max_attempts`, `last_error`, `lease_owner`, `lease_expires_at`, `idempotency_key`, `workflow_id`, `workflow_node_key`, `pending_dependencies`, `created_at`, `updated_at`, `completed_at`.
 
@@ -426,26 +445,26 @@ jobqueue/
 
 ### 3.5 gRPC surface (package `jobqueue.v1`)
 
-| Service | RPC | Step |
-|---|---|---|
-| `ProducerService` | `Enqueue`, `GetJob` | 5.1 |
-| `ProducerService` | `SubmitWorkflow`, `GetWorkflow` | 14.2 |
-| `WorkerService` | `FetchJobs`, `CompleteJob`, `FailJob` | 5.1 |
-| `WorkerService` | `Heartbeat` | 8.2 |
-| `WorkerService` | `ReleaseJob` | 9.1 |
-| `AdminService` | `ListJobs`, `ReplayJob`, `ReplayDeadJobs` | 11.2 |
-| `AdminService` | `UpsertCronSchedule`, `ListCronSchedules`, `DeleteCronSchedule` | 13.3 |
-| `grpc.health.v1.Health` | standard health service | 9.2 |
+| Service                 | RPC                                                             | Step |
+| ----------------------- | --------------------------------------------------------------- | ---- |
+| `ProducerService`       | `Enqueue`, `GetJob`                                             | 5.1  |
+| `ProducerService`       | `SubmitWorkflow`, `GetWorkflow`                                 | 14.2 |
+| `WorkerService`         | `FetchJobs`, `CompleteJob`, `FailJob`                           | 5.1  |
+| `WorkerService`         | `Heartbeat`                                                     | 8.2  |
+| `WorkerService`         | `ReleaseJob`                                                    | 9.1  |
+| `AdminService`          | `ListJobs`, `ReplayJob`, `ReplayDeadJobs`                       | 11.2 |
+| `AdminService`          | `UpsertCronSchedule`, `ListCronSchedules`, `DeleteCronSchedule` | 13.3 |
+| `grpc.health.v1.Health` | standard health service                                         | 9.2  |
 
 **Field-number plan** (never reuse or renumber):
 
-| Message | Fields |
-|---|---|
-| `Job` | 1–12 (5.1); `priority = 13` (12.1); `workflow_id = 14`, `workflow_node_key = 15` (14.2) |
-| `EnqueueRequest` | 1–5 (5.1); `priority = 6` (12.1); `oneof schedule { run_at = 7; delay = 8; }` (12.2) |
-| `FetchJobsResponse` | `jobs = 1` (5.1); `lease_duration = 2` (8.2) |
-| `FailJobRequest` | 1–4 (5.1); `non_retryable = 5` (11.1) |
-| `FailJobResponse` | `new_state = 1` (5.1); `next_run_at = 2` (10.2) |
+| Message             | Fields                                                                                  |
+| ------------------- | --------------------------------------------------------------------------------------- |
+| `Job`               | 1–12 (5.1); `priority = 13` (12.1); `workflow_id = 14`, `workflow_node_key = 15` (14.2) |
+| `EnqueueRequest`    | 1–5 (5.1); `priority = 6` (12.1); `oneof schedule { run_at = 7; delay = 8; }` (12.2)    |
+| `FetchJobsResponse` | `jobs = 1` (5.1); `lease_duration = 2` (8.2)                                            |
+| `FailJobRequest`    | 1–4 (5.1); `non_retryable = 5` (11.1)                                                   |
+| `FailJobResponse`   | `new_state = 1` (5.1); `next_run_at = 2` (10.2)                                         |
 
 ### 3.6 Errors
 
@@ -460,6 +479,7 @@ jobqueue/
 `up`, `down`, `reset-db`, `psql`, `redis-cli`, `migrate-up`, `migrate-down`, `migrate-status`, `proto`, `proto-breaking`, `build`, `test`, `lint`, `run-server`, `run-worker`.
 
 ---
+
 ## Phase 1 — Project setup and Go refresher
 
 ### Step 1.1 — Tooling check and repository skeleton
@@ -467,6 +487,7 @@ jobqueue/
 **Problem.** Before writing any queue logic we need a reproducible workspace: a Go module, a git repo, and the tools to build, test and (later) generate code. A messy start causes confusing errors later.
 
 **Teach.**
+
 - Go modules: `go.mod` (module path, Go version, dependencies) and `go.sum` (checksums of every dependency, which protect against tampered downloads). Why `go.sum` is committed.
 - Packages: one directory = one package. A package named `main` with `func main()` builds into an executable. The `cmd/<name>/` convention lets one repo hold several binaries.
 - `internal/`: the compiler forbids other modules from importing anything under `internal/`. It's a real boundary, not just a convention.
@@ -475,10 +496,12 @@ jobqueue/
 - Makefiles in one minute: targets, recipes, `.PHONY`, and the classic trap that recipes must be indented with a **tab**.
 
 **Design decisions.**
+
 - One repo with several binaries in `cmd/` (vs. one repo per service): shared code, atomic changes, simpler for one person.
 - Module path `github.com/<github-username>/jobqueue`. **Ask the learner for their GitHub username.** If they don't want to use one, use `example.com/jobqueue`.
 
 **Build.**
+
 1. Check tools: `go version` (≥ 1.24; if older, ask the learner to run `brew upgrade go` or install from go.dev), `docker --version`, `docker compose version`, `git --version`, `make --version`. Install the extras on macOS: `brew install bufbuild/buf/buf grpcurl jq`. Confirm `$(go env GOPATH)/bin` is on `PATH` (needed in Phase 5); if not, tell the learner which line to add to `~/.zshrc`.
 2. `git init`; create `.gitignore` with: `bin/`, `.env`, `*.out`, `*.prof`, `*.test`, `coverage.*`, `.DS_Store`, `tmp/`.
 3. `go mod init github.com/<username>/jobqueue`.
@@ -502,6 +525,7 @@ jobqueue/
 **Walkthrough focus.** What each line of `go.mod` means. Why `internal/` matters for a project like this. What `go build -o bin/ ./cmd/...` does (the `...` wildcard).
 
 **Check your understanding.**
+
 1. What's the difference between `go run` and `go build`?
 2. If another repo tries to import `github.com/<you>/jobqueue/internal/store`, what happens and why?
 3. What does `go.sum` protect you from?
@@ -515,6 +539,7 @@ jobqueue/
 **Problem.** The queue needs Postgres (and later Redis) running locally, identically every time, with one command.
 
 **Teach** (brief; the learner knows Docker):
+
 - Healthchecks: "container started" ≠ "database ready to accept connections". `docker compose up --wait` blocks until healthchecks pass.
 - Named volumes: data survives `docker compose down`; `down -v` wipes it.
 - Host port mapping `5433:5432` avoids clashing with a Postgres already installed on the laptop.
@@ -522,6 +547,7 @@ jobqueue/
 - `pg_stat_statements` is preloaded now because Phase 16 uses it to find slow queries.
 
 **Build.**
+
 1. `docker-compose.yml`:
    ```yaml
    services:
@@ -529,15 +555,22 @@ jobqueue/
        image: postgres:17
        environment:
          POSTGRES_USER: jobqueue
-         POSTGRES_PASSWORD: jobqueue   # local development only
+         POSTGRES_PASSWORD: jobqueue # local development only
          POSTGRES_DB: jobqueue
        ports:
          - "5433:5432"
        volumes:
          - pgdata:/var/lib/postgresql/data
-       command: ["postgres", "-c", "max_connections=200", "-c", "shared_preload_libraries=pg_stat_statements"]
+       command:
+         [
+           "postgres",
+           "-c",
+           "max_connections=200",
+           "-c",
+           "shared_preload_libraries=pg_stat_statements",
+         ]
        healthcheck:
-         test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U jobqueue -d jobqueue"]  # -h: during first-time init Postgres listens only on a socket
+         test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U jobqueue -d jobqueue"] # -h: during first-time init Postgres listens only on a socket
          interval: 2s
          timeout: 3s
          retries: 30
@@ -557,6 +590,7 @@ jobqueue/
    ```
 2. `.env.example` with every variable from Section 3.2 that exists so far (`JQ_DATABASE_URL`, `JQ_LOG_LEVEL`) and a comment that values are local-only. Copy it: `cp .env.example .env`. Add new variables to `.env.example` whenever a later step introduces them.
 3. Extend the `Makefile` (put the first two lines at the very top):
+
    ```make
    -include .env
    export
@@ -573,6 +607,7 @@ jobqueue/
    redis-cli:
    	docker compose exec redis redis-cli
    ```
+
    (`reset-db` will also run migrations once they exist in 2.2.)
 
    **Gotcha to teach now:** with `-include .env` + `export`, values in `.env` **override** variables set in your shell, so `JQ_LEASE_DURATION=10s make run-server` is silently ignored. Put overrides **after** the target instead: `make run-server JQ_LEASE_DURATION=10s` (command-line variables beat the Makefile and are still exported). Every demo in this plan uses that form.
@@ -582,6 +617,7 @@ jobqueue/
 **Walkthrough focus.** Each block of the compose file. What `-include .env` + `export` does in the Makefile (every recipe sees those env vars).
 
 **Check your understanding.**
+
 1. Why map host port 5433 instead of 5432?
 2. What happens to your data after `docker compose down`? After `docker compose down -v`?
 
@@ -594,8 +630,9 @@ jobqueue/
 **Problem.** Every binary needs settings (database URL, ports, timeouts) and readable logs. Hard-coding settings breaks the moment you run in a different environment. This step is also the Go refresher.
 
 **Teach.**
+
 - **Go refresher, using this step's code:** structs and methods; pointer vs value receivers; multiple return values `(T, error)`; `if err != nil` flow; wrapping errors with `fmt.Errorf("...: %w", err)` and inspecting them with `errors.Is` / `errors.As`; `defer` (runs when the function returns, LIFO order).
-- **`context.Context`** basics: it carries cancellation and deadlines *down* a call tree. Cancelling a parent cancels all children. Functions that block should accept one and stop when `ctx.Done()` closes.
+- **`context.Context`** basics: it carries cancellation and deadlines _down_ a call tree. Cancelling a parent cancels all children. Functions that block should accept one and stop when `ctx.Done()` closes.
 - **`signal.NotifyContext`**: turns Ctrl-C / SIGTERM into a cancelled context.
 - **12-factor config:** settings come from environment variables; the code has sensible defaults.
 - **Structured logging with `log/slog`:** key/value attributes (`logger.Info("claimed", "job_id", 7)`) instead of formatted strings, so logs can be searched and parsed.
@@ -604,6 +641,7 @@ jobqueue/
 - **The `run()` pattern:** `main` calls `run()` and exits non-zero on error. This keeps `defer`s working (`os.Exit` skips deferred calls) and makes startup testable.
 
 **Build.**
+
 1. `internal/config/config.go`:
    - Helpers: `getString(key, def string) string`, `getInt(key string, def int) (int, error)`, `getDuration(key string, def time.Duration) (time.Duration, error)`, `getLogLevel(key string, def slog.Level) (slog.Level, error)`.
    - `type Server struct { DatabaseURL string; LogLevel slog.Level }` and `func LoadServer() (Server, error)`. Later steps add fields to this struct (and add `Worker`, `Client` structs) as variables are introduced in Section 3.2.
@@ -651,6 +689,7 @@ jobqueue/
 6. Add `run-server` to the Makefile: `go run ./cmd/server`.
 
 **Verify.**
+
 - `make up && make run-server` → logs "connected to postgres"; Ctrl-C → "shutting down".
 - `docker compose stop postgres && make run-server` → a clear wrapped error like `error: ping postgres: ...`. Restart with `make up`.
 - `make test`.
@@ -658,6 +697,7 @@ jobqueue/
 **Walkthrough focus.** The `run()` pattern and why `defer pool.Close()` would be skipped by `os.Exit`. How `ctx` flows from `NotifyContext` into `Ping`. How `%w` builds the error chain you saw in the output.
 
 **Check your understanding.**
+
 1. Why does `run()` return an error instead of calling `log.Fatal` itself?
 2. What does passing `pingCtx` to `pool.Ping` buy us?
 3. Why shouldn't `internal/store` call `os.Getenv` directly?
@@ -673,8 +713,9 @@ jobqueue/
 **Problem.** A queue is a state machine. Most queue bugs are illegal or racy state transitions. We design every state and transition on paper before writing SQL. No code in this step.
 
 **Teach.**
+
 - What a job queue is for: decoupling (the web request returns fast while the work runs later), smoothing load spikes, retries, scheduling.
-- **Why Postgres as a queue:** ACID durability, *transactional enqueue* (insert the job in the same transaction as your business data, so you never get "order saved but email job lost"), one less system to run. Limits: a throughput ceiling, and table bloat from constant updates (MVCC; covered in 2.2).
+- **Why Postgres as a queue:** ACID durability, _transactional enqueue_ (insert the job in the same transaction as your business data, so you never get "order saved but email job lost"), one less system to run. Limits: a throughput ceiling, and table bloat from constant updates (MVCC; covered in 2.2).
 - Where other systems sit: Redis-based queues (Sidekiq), brokers (RabbitMQ, SQS), logs (Kafka), workflow engines (Temporal). One sentence each.
 - State machines: states, transitions, terminal states, and **invariants** (facts that must always be true).
 
@@ -697,22 +738,23 @@ stateDiagram-v2
   succeeded --> [*]
 ```
 
-| From | To | Trigger | Built in |
-|---|---|---|---|
-| (new) | `pending` | `Enqueue` | 3.1 |
-| (new) | `blocked` | `SubmitWorkflow`, node has dependencies | 14.2 |
-| `blocked` | `pending` | last dependency succeeded | 14.3 |
-| `blocked` | `cancelled` | an upstream job became `dead` | 14.4 |
-| `pending` | `running` | `ClaimJobs` (worker fetch) | 3.2 |
-| `running` | `succeeded` | `CompleteJob` | 3.3 |
-| `running` | `pending` | `FailJob` with retries left | 3.3, 10.2 |
-| `running` | `pending` | lease expired (reaper) | 8.1 |
-| `running` | `pending` | `ReleaseJob` (graceful shutdown) | 9.1 |
-| `running` | `dead` | `FailJob` out of attempts or non-retryable; reaper on last attempt | 11.1 |
-| `dead` | `pending` | `ReplayJob` | 11.2 |
-| `cancelled` | `blocked` | upstream job replayed | 14.4 |
+| From        | To          | Trigger                                                            | Built in  |
+| ----------- | ----------- | ------------------------------------------------------------------ | --------- |
+| (new)       | `pending`   | `Enqueue`                                                          | 3.1       |
+| (new)       | `blocked`   | `SubmitWorkflow`, node has dependencies                            | 14.2      |
+| `blocked`   | `pending`   | last dependency succeeded                                          | 14.3      |
+| `blocked`   | `cancelled` | an upstream job became `dead`                                      | 14.4      |
+| `pending`   | `running`   | `ClaimJobs` (worker fetch)                                         | 3.2       |
+| `running`   | `succeeded` | `CompleteJob`                                                      | 3.3       |
+| `running`   | `pending`   | `FailJob` with retries left                                        | 3.3, 10.2 |
+| `running`   | `pending`   | lease expired (reaper)                                             | 8.1       |
+| `running`   | `pending`   | `ReleaseJob` (graceful shutdown)                                   | 9.1       |
+| `running`   | `dead`      | `FailJob` out of attempts or non-retryable; reaper on last attempt | 11.1      |
+| `dead`      | `pending`   | `ReplayJob`                                                        | 11.2      |
+| `cancelled` | `blocked`   | upstream job replayed                                              | 14.4      |
 
 **Invariants** (most are enforced by `CHECK` constraints):
+
 1. `state = 'running'` ⇔ `lease_owner` and `lease_expires_at` are both non-NULL.
 2. `completed_at` is non-NULL ⇔ `state` is terminal (`succeeded`, `dead`, `cancelled`).
 3. `attempts` only goes up, except `ReleaseJob` (−1, because a shutdown isn't the job's fault) and `ReplayJob` (reset to 0).
@@ -721,9 +763,10 @@ stateDiagram-v2
 
 **Verify.** The AI asks the learner to trace three scenarios through the diagram, naming each transition: (a) a job fails twice, then succeeds; (b) a worker crashes mid-job; (c) a job with `max_attempts = 1` fails.
 
-**Walkthrough focus.** Why `attempts` counts *deliveries* (it goes up when a job is claimed, not when it fails). This is explained fully in 3.2; preview it here.
+**Walkthrough focus.** Why `attempts` counts _deliveries_ (it goes up when a job is claimed, not when it fails). This is explained fully in 3.2; preview it here.
 
 **Check your understanding.**
+
 1. Which states are terminal?
 2. Why can't a job go straight from `pending` to `succeeded`?
 3. Which invariant would catch a bug where `CompleteJob` forgets to clear `lease_owner`?
@@ -737,7 +780,8 @@ stateDiagram-v2
 **Problem.** The schema will change many times over this project. We need versioned, repeatable migrations, and a table designed for a hot, constantly updated workload.
 
 **Teach.**
-- Migrations: numbered files with an *up* and a *down*; a version table (`goose_db_version`) records what has run. Never edit an applied migration; write a new one.
+
+- Migrations: numbered files with an _up_ and a _down_; a version table (`goose_db_version`) records what has run. Never edit an applied migration; write a new one.
 - Column choices:
   - `BIGINT GENERATED ALWAYS AS IDENTITY` vs UUID: identity IDs are small, ordered and readable in logs; UUIDs suit IDs generated by many machines. One Postgres generates our IDs, so identity is fine.
   - `TEXT` + `CHECK` instead of a Postgres `ENUM`: adding values to an enum is awkward inside migrations; a `CHECK` is easy to change.
@@ -746,9 +790,10 @@ stateDiagram-v2
 - **`CHECK` constraints as invariant guards** (Law 8): if any later code forgets to clear the lease, Postgres rejects the write and the bug surfaces immediately.
 - **MVCC in one paragraph:** every `UPDATE` writes a new row version and leaves a dead one behind; autovacuum cleans up. Queue tables update constantly, so long-running transactions (which block cleanup) are especially harmful. Reading: Brandur's "Postgres Job Queues & Failure By MVCC" (see Appendix C).
 
-**Design decisions.** Goose as a *library* with migrations embedded in the binary (`//go:embed`), run via `cmd/migrate`. Tests reuse the same function, so tests always run against the real schema.
+**Design decisions.** Goose as a _library_ with migrations embedded in the binary (`//go:embed`), run via `cmd/migrate`. Tests reuse the same function, so tests always run against the real schema.
 
 **Build.**
+
 1. `internal/store/migrations/0001_create_jobs.sql`:
    ```sql
    -- +goose Up
@@ -794,6 +839,7 @@ stateDiagram-v2
 4. Makefile: `migrate-up`, `migrate-down`, `migrate-status` (`go run ./cmd/migrate <cmd>`); change `reset-db` to also run `migrate-up`.
 
 **Verify.**
+
 - `make migrate-up`, then `make psql` → `\d jobs` shows columns, constraints and the partial index.
 - `make migrate-down && make migrate-up` (the round trip works).
 - `make migrate-status`.
@@ -802,6 +848,7 @@ stateDiagram-v2
 **Walkthrough focus.** Every column and why it exists. The two invariant `CHECK`s. Why the index is partial and why its column order matters.
 
 **Check your understanding.**
+
 1. Why a partial index rather than an index on all rows?
 2. Why `TEXT` + `CHECK` instead of `ENUM`?
 3. What goes wrong if you edit `0001` after it has already run on someone's database?
@@ -817,6 +864,7 @@ stateDiagram-v2
 **Problem.** We need one place where all SQL lives, a typed Go API over it, and tests that run against a real Postgres. Queue correctness depends on database locking behaviour that mocks can't reproduce.
 
 **Teach.**
+
 - The store (repository) pattern: all SQL in one package, so the rest of the code calls `store.Enqueue(...)` and never builds SQL.
 - pgx basics: `QueryRow(...).Scan(...)`, `Query` + `rows.Next()`, `pgx.ErrNoRows`.
 - Nullable columns map to pointers (`*string`, `*time.Time`); `nil` means SQL `NULL`.
@@ -828,6 +876,7 @@ stateDiagram-v2
 **Design decisions.** One freshly created and migrated database per test: simple, fully isolated, and fast enough (~100 ms). Optimization to mention but not build: template databases.
 
 **Build.**
+
 1. `internal/store/store.go`:
    ```go
    // DBTX is satisfied by *pgxpool.Pool and pgx.Tx.
@@ -888,6 +937,7 @@ stateDiagram-v2
 **Walkthrough focus.** `DBTX` and how `InTx` hands a transaction-backed `Store` to the callback. The `jobColumns`/`scanJob` pairing. Why `package store_test`.
 
 **Check your understanding.**
+
 1. Why use pointers for nullable columns?
 2. What does the `DBTX` interface let us do that a concrete `*pgxpool.Pool` field wouldn't?
 3. Why do the tests use a real database instead of a mock?
@@ -903,16 +953,18 @@ stateDiagram-v2
 **Demo the problem** (as part of BUILD, item 3): a naive claim that double-claims jobs under concurrency.
 
 **Teach.**
-- The race: draw the ASCII timeline of a naive "SELECT the oldest pending job, then UPDATE it to running". Each statement is atomic; the *pair* isn't.
+
+- The race: draw the ASCII timeline of a naive "SELECT the oldest pending job, then UPDATE it to running". Each statement is atomic; the _pair_ isn't.
 - **Row locks:** `SELECT ... FOR UPDATE` locks the selected rows until the transaction ends. A second transaction trying to lock the same row waits.
-- **`SKIP LOCKED`:** instead of waiting, skip rows someone else has locked. That's ideal for queues: every worker grabs *different* rows without blocking. (It's wrong for most other workloads, because it deliberately gives an inconsistent view.)
+- **`SKIP LOCKED`:** instead of waiting, skip rows someone else has locked. That's ideal for queues: every worker grabs _different_ rows without blocking. (It's wrong for most other workloads, because it deliberately gives an inconsistent view.)
 - Doing claim-and-mark in **one statement**: a CTE selects and locks, the `UPDATE ... FROM` marks the rows, `RETURNING` hands them back. One round trip, no window for races.
 - Why a CTE rather than `WHERE id IN (SELECT ... LIMIT n FOR UPDATE SKIP LOCKED)`: a CTE with `FOR UPDATE` is evaluated exactly once. A sub-select can, in some plans, be re-evaluated and return more rows than the `LIMIT`.
-- **`attempts` goes up at claim time**, so it counts *deliveries*. If a job crashes the worker every time (a "poison pill"), it never reaches `FailJob`, but its attempts still climb and we can stop it (Phase 11).
+- **`attempts` goes up at claim time**, so it counts _deliveries_. If a job crashes the worker every time (a "poison pill"), it never reaches `FailJob`, but its attempts still climb and we can stop it (Phase 11).
 - Leases are set now (explained fully in Phase 8). Times come from Postgres `now()` (Law 2). Durations are passed as milliseconds: `$4::bigint * interval '1 millisecond'`.
 - **One queue per claim query:** the index `(queue, run_at, id)` can return rows already in order for a single queue. With several queues, Postgres would have to sort. The service layer (5.2) loops over queues in priority order.
 
 **Build.**
+
 1. In `internal/store/jobs.go`:
    ```go
    type ClaimParams struct {
@@ -954,15 +1006,17 @@ stateDiagram-v2
 3. **Break-it demo** (`internal/store/naive_claim_demo_test.go`): `TestDemo_NaiveClaimDoubleClaims` is skipped unless `JQ_DEMO=1`. It implements a naive claim (plain `SELECT id ... LIMIT 1`, then `UPDATE jobs SET state = 'running', attempts = attempts + 1, lease_owner = $2, lease_expires_at = now() + interval '30 seconds' WHERE id = $1`, with no state check) and runs the same 20-goroutine test, logging how many jobs were claimed more than once. If you see zero duplicates, add `time.Sleep(time.Millisecond)` between the two statements and explain why widening the race window makes the bug appear. A second demo, `TestDemo_ForUpdateWithoutSkipLocked`, times `FOR UPDATE` without `SKIP LOCKED`: correct, but workers queue up behind each other.
 
 **Verify.**
+
 - `make test` (with `-race`).
 - `JQ_DEMO=1 go test ./internal/store -run Demo -v` and read the output together.
 - **Hands-on in two psql sessions** (`make psql` twice). Enqueue a few rows first.
   Session A: `BEGIN; SELECT id FROM jobs WHERE state='pending' ORDER BY id LIMIT 1 FOR UPDATE;`
-  Session B: the same query → it **hangs**. Ctrl-C it, then run it with `SKIP LOCKED` → you get the *next* row immediately. `ROLLBACK` both.
+  Session B: the same query → it **hangs**. Ctrl-C it, then run it with `SKIP LOCKED` → you get the _next_ row immediately. `ROLLBACK` both.
 
 **Walkthrough focus.** Read the claim SQL line by line. What the lock protects and when it's released (at the end of the statement's implicit transaction). Why `attempts` is incremented here.
 
 **Check your understanding.**
+
 1. Each statement in the naive version is atomic. Why does it still double-claim?
 2. What happens with `FOR UPDATE` but without `SKIP LOCKED`?
 3. Why increment `attempts` at claim time instead of when the job fails?
@@ -977,13 +1031,15 @@ stateDiagram-v2
 **Problem.** When a worker reports a result, we must be sure it still owns the job. Otherwise a slow "zombie" worker (one we gave up on) could overwrite the result of the worker that legitimately took over.
 
 **Teach.**
+
 - **Compare-and-set (CAS) updates:** `UPDATE ... WHERE id = $1 AND state = 'running' AND lease_owner = $2 AND attempts = $3`, then check rows-affected. Zero rows means "you're not the owner any more".
-- **Fencing tokens** (Martin Kleppmann): every new owner gets a strictly larger token, and writes carrying an older token are rejected. Our token is `attempts`, which goes up on every claim. Why `worker_id` alone isn't enough: the *same* worker could be handed the same job again after its lease expired, and the old run must still be rejected.
+- **Fencing tokens** (Martin Kleppmann): every new owner gets a strictly larger token, and writes carrying an older token are rejected. Our token is `attempts`, which goes up on every claim. Why `worker_id` alone isn't enough: the _same_ worker could be handed the same job again after its lease expired, and the old run must still be rejected.
 - Sentinel errors (`ErrLeaseLost`, `ErrNotFound`) and checking them with `errors.Is`.
 - Good error messages: when zero rows match, tell "job doesn't exist" apart from "you lost the lease".
 - **Bound untrusted input:** truncate stored error messages (to 4 KB) so a handler that returns a 50 MB error can't bloat the table.
 
 **Build.**
+
 1. `type CompleteParams struct { ID int64; WorkerID string; Attempt int }` and `func (s *Store) CompleteJob(ctx context.Context, p CompleteParams) (Job, error)`:
    ```sql
    UPDATE jobs
@@ -1010,7 +1066,8 @@ stateDiagram-v2
 **Walkthrough focus.** Draw the zombie timeline: Worker A claims (attempt 1) → A freezes → lease expires (Phase 8) → Worker B claims (attempt 2) → A wakes and calls Complete with attempt 1 → rejected. Point at the exact `WHERE` clause that rejects it.
 
 **Check your understanding.**
-1. Why fence with both `worker_id` *and* `attempt`?
+
+1. Why fence with both `worker_id` _and_ `attempt`?
 2. What does the `jobs_lease_check` constraint protect us from?
 3. Why does `FailJob` clear the lease?
 
@@ -1025,9 +1082,10 @@ stateDiagram-v2
 **Problem.** A producer calls `Enqueue` and the network times out. Did the job get created? The producer can't tell. If it retries, it might create a duplicate (two "charge card" jobs). We need enqueue to be safe to retry.
 
 **Teach.**
+
 - **Idempotency:** doing an operation twice has the same effect as doing it once.
-- The core uncertainty of networks: was the *request* lost, or only the *response*? The client can't distinguish them, so its only safe move is to retry, which is only safe if the operation is idempotent.
-- **Idempotency keys** (Stripe's pattern): the client generates a unique key per *logical* operation and reuses it on every retry. The server stores the key and returns the original result for repeats.
+- The core uncertainty of networks: was the _request_ lost, or only the _response_? The client can't distinguish them, so its only safe move is to retry, which is only safe if the operation is idempotent.
+- **Idempotency keys** (Stripe's pattern): the client generates a unique key per _logical_ operation and reuses it on every retry. The server stores the key and returns the original result for repeats.
 - **Two sides of idempotency:** producer-side de-duplication (this step) and consumer-side idempotent handlers (Phase 8). You need both for "effectively once".
 - Implementation: a **partial unique index** plus `INSERT ... ON CONFLICT DO NOTHING`. Why "SELECT to check, then INSERT" is the same race as Phase 3.
 - `ON CONFLICT` with a partial unique index must repeat the index's `WHERE` predicate, or Postgres reports "there is no unique or exclusion constraint matching the ON CONFLICT specification".
@@ -1036,6 +1094,7 @@ stateDiagram-v2
 - Same key, different payload: options are "error" (Stripe) or "return the existing job". We return the existing job and document that.
 
 **Build.**
+
 1. `internal/store/migrations/0002_add_idempotency_key.sql`:
    ```sql
    -- +goose Up
@@ -1064,13 +1123,15 @@ stateDiagram-v2
 **Walkthrough focus.** Step through the concurrent test's timeline: who inserts, who waits, who hits the conflict, and why the follow-up `SELECT` sees the committed row (under READ COMMITTED each statement gets a fresh snapshot).
 
 **Check your understanding.**
+
 1. Why does "SELECT then INSERT" fail under concurrency?
-2. A client retries after 10 seconds but generates a *new* key. What happens?
+2. A client retries after 10 seconds but generates a _new_ key. What happens?
 3. Why isn't producer-side idempotency enough for exactly-once processing?
 
 **Done when.** Enqueue is retry-safe and the concurrency test passes under `-race`.
 
 ---
+
 ## Phase 5 — gRPC API
 
 ### Step 5.1 — Protobuf contract and code generation
@@ -1078,6 +1139,7 @@ stateDiagram-v2
 **Problem.** Producers and workers are separate processes, possibly written in other languages. They need a typed, versioned contract and an efficient transport.
 
 **Teach.**
+
 - RPC vs REST. gRPC = Protocol Buffers (a compact binary schema format) over HTTP/2, with generated client and server code.
 - The four RPC shapes (unary, server-streaming, client-streaming, bidirectional). We use unary.
 - Protobuf basics: messages; **field numbers are the wire identity** (names aren't sent); scalar types; `repeated`; enums whose zero value is `*_UNSPECIFIED`; `oneof`; well-known types (`Timestamp`, `Duration`).
@@ -1090,6 +1152,7 @@ stateDiagram-v2
 **Design decisions.** Generated code goes in `gen/` and **is committed** (anyone can build without installing `buf`; the trade-off is noisy diffs). `bytes payload` carries JSON (simple and language-neutral; the server validates it).
 
 **Build.**
+
 1. Install plugins: `go install google.golang.org/protobuf/cmd/protoc-gen-go@latest` and `go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest`. Confirm `which protoc-gen-go` works.
 2. `buf.yaml`:
    ```yaml
@@ -1230,6 +1293,7 @@ stateDiagram-v2
 **Walkthrough focus.** Tour the generated code: message structs and getters, the server interface, the client constructor, and why servers embed `Unimplemented...Server` (adding an RPC later won't break compilation). From now on, every proto change must pass `make proto-breaking` before committing.
 
 **Check your understanding.**
+
 1. Why do field numbers matter more than field names?
 2. Why is `payload` `bytes` rather than `string`?
 3. An old client doesn't know about `max_attempts` and never sets it. What does the server receive, and why is that safe?
@@ -1243,6 +1307,7 @@ stateDiagram-v2
 **Problem.** Transport code (gRPC) shouldn't contain business rules, and bad input should be rejected before it reaches the database.
 
 **Teach.**
+
 - Layering: `api` (transport: proto ↔ domain types) → `queue` (rules: validation, defaults, multi-queue fetch) → `store` (SQL). Each layer can be tested on its own, and you could add an HTTP API later without touching the rules.
 - Validate at the boundary. **Limits protect the system:** payload size, string lengths, batch sizes. Large blobs belong in object storage, with a reference in the payload.
 - Typed errors: a `ValidationError` struct, detected with `errors.As`.
@@ -1251,6 +1316,7 @@ stateDiagram-v2
 **Design decisions.** `queue` defines its own input structs and **does not import the generated proto package**. Keeping transport out of the core keeps it portable.
 
 **Build.**
+
 1. `internal/queue/errors.go`: `type ValidationError struct { Field, Reason string }` with a **pointer receiver** `func (e *ValidationError) Error() string` → `"invalid <field>: <reason>"`. Always return it as a pointer: `return &ValidationError{Field: "queue", Reason: "..."}`. Explain why value vs pointer matters for `errors.As`.
 2. `internal/queue/validate.go`, with these rules:
    - queue: `""` → `"default"`; otherwise must match `^[a-z0-9][a-z0-9_-]{0,63}$`.
@@ -1273,7 +1339,7 @@ stateDiagram-v2
    func New(st *store.Store, opts Options, logger *slog.Logger) *Service
    ```
    Input types: `EnqueueInput`, `FetchInput{WorkerID string; Queues []string; MaxJobs int}`, `CompleteInput`, `FailInput`.
-   Methods: `Enqueue(ctx, EnqueueInput) (store.Job, bool, error)`, `GetJob(ctx, id)`, `FetchJobs(ctx, FetchInput) ([]store.Job, error)` (loop over `Queues` in order, calling `store.ClaimJobs` with the *remaining* limit until it's filled or the queues run out), `CompleteJob(ctx, CompleteInput) error`, `FailJob(ctx, FailInput) (store.Job, error)`.
+   Methods: `Enqueue(ctx, EnqueueInput) (store.Job, bool, error)`, `GetJob(ctx, id)`, `FetchJobs(ctx, FetchInput) ([]store.Job, error)` (loop over `Queues` in order, calling `store.ClaimJobs` with the _remaining_ limit until it's filled or the queues run out), `CompleteJob(ctx, CompleteInput) error`, `FailJob(ctx, FailInput) (store.Job, error)`.
 4. Add `LeaseDuration` to `config.Server` (`JQ_LEASE_DURATION`, default 30s).
 5. Tests: table-driven validation tests (no DB), plus service tests with `testutil.NewTestDB`: multi-queue fetch takes from the first queue before the second; the payload default is `{}`.
 
@@ -1282,6 +1348,7 @@ stateDiagram-v2
 **Walkthrough focus.** The `FetchJobs` loop over queues. Why validation lives in `queue`, not `api` or `store`.
 
 **Check your understanding.**
+
 1. Why doesn't `queue` import the generated proto package?
 2. Why cap payloads at 1 MiB?
 3. With `queues = ["critical", "default"]` and `max_jobs = 10`, and 3 jobs waiting in `critical`, what does `FetchJobs` return?
@@ -1295,6 +1362,7 @@ stateDiagram-v2
 **Problem.** Expose the service over the network, translate errors into proper gRPC status codes, and keep internal details private.
 
 **Teach.**
+
 - Server lifecycle: `net.Listen` → `grpc.NewServer` → register services → `Serve` (blocks). Server reflection lets tools like `grpcurl` discover the API.
 - **Status codes:** `InvalidArgument`, `NotFound`, `FailedPrecondition`, `Unavailable`, `DeadlineExceeded`, `Internal`. Map them in one place. **Never leak internal errors** (SQL text, hostnames) to clients: log them in full and return a generic `Internal`.
 - **Deadlines:** clients should always set one. The server's `ctx` carries it, and passing that `ctx` into pgx means a cancelled RPC also cancels its SQL query.
@@ -1302,6 +1370,7 @@ stateDiagram-v2
 - Testing with **`bufconn`**: an in-memory listener that runs the real gRPC stack without real ports.
 
 **Build.**
+
 1. `internal/api/convert.go`: `jobToProto(store.Job) *jobqueuev1.Job`, `stateToProto(store.State) jobqueuev1.JobState`, and a helper for nullable times.
 2. `internal/api/errors.go`: `func toStatus(logger *slog.Logger, method string, err error) error`:
    - `var ve *queue.ValidationError; errors.As(err, &ve)` → `InvalidArgument` with the validation message. (This only matches if the service always returns `&ValidationError{...}`; see 5.2.)
@@ -1329,6 +1398,7 @@ stateDiagram-v2
 7. Tests (`internal/api/api_test.go`, `package api_test`): Enqueue → GetJob; invalid queue → `codes.InvalidArgument`; unknown job → `codes.NotFound`; Fetch → Complete; Complete with the wrong attempt → `codes.FailedPrecondition`. Use `status.Code(err)`.
 
 **Verify.**
+
 - `make test`.
 - `make run-server`, then in another terminal:
   - `grpcurl -plaintext localhost:50051 list`
@@ -1339,6 +1409,7 @@ stateDiagram-v2
 **Walkthrough focus.** Follow one Enqueue request: grpcurl → HTTP/2 → generated code → `ProducerServer.Enqueue` → `queue.Service.Enqueue` → `store.Enqueue` → SQL → back out. Then show the error path for a bad queue name.
 
 **Check your understanding.**
+
 1. Why return a generic `Internal` instead of the real error text?
 2. If a client cancels its RPC, what happens to the SQL query running for it?
 3. What does `bufconn` let us test that calling the service directly wouldn't?
@@ -1354,6 +1425,7 @@ stateDiagram-v2
 **Teach.** CLI subcommands with the standard library (`flag.NewFlagSet` per subcommand). A per-call client deadline (`context.WithTimeout`). Printing protobuf messages as JSON with `protojson`.
 
 **Build.**
+
 1. Add `config.Client { ServerAddr string }` (`JQ_SERVER_ADDR`).
 2. `cmd/jqctl/main.go`: a `map[string]func(ctx context.Context, conn *grpc.ClientConn, args []string) error` of subcommands, so later phases can slot new ones in. Every **RPC** gets its own 5-second timeout (create the `context.WithTimeout` per call, inside any loop, never one for the whole command).
    - `jqctl enqueue --type sleep --payload '{"ms":500}' [--queue default] [--key abc] [--max-attempts 5]` → prints `job_id` and `created`.
@@ -1366,6 +1438,7 @@ stateDiagram-v2
 **Walkthrough focus.** The subcommand map pattern; where the deadline is set and what the user sees when it fires.
 
 **Check your understanding.**
+
 1. What does the 5-second deadline protect the user from?
 2. What would you add so a script could retry enqueues safely?
 
@@ -1375,22 +1448,24 @@ stateDiagram-v2
 
 ## Phase 6 — Concurrency primer
 
-> These four steps are lessons, not features. Each example is a tiny runnable program in `examples/concurrency/NN_name/main.go`. For **every** example the AI: (1) explains the concept, (2) asks the learner to **predict** the output, (3) runs it, (4) explains the actual output, (5) where relevant, runs it again with `go run -race`. Keep each program under ~60 lines with comments. These examples are the reference the learner will come back to, so make them clear. Some examples are *meant* to be buggy (races, leaks, deadlocks, misplaced `wg.Add`); `go vet` may flag them, which is why `make lint` excludes `examples/`. Point that out when it happens: vet catching the bug is part of the lesson.
+> These four steps are lessons, not features. Each example is a tiny runnable program in `examples/concurrency/NN_name/main.go`. For **every** example the AI: (1) explains the concept, (2) asks the learner to **predict** the output, (3) runs it, (4) explains the actual output, (5) where relevant, runs it again with `go run -race`. Keep each program under ~60 lines with comments. These examples are the reference the learner will come back to, so make them clear. Some examples are _meant_ to be buggy (races, leaks, deadlocks, misplaced `wg.Add`); `go vet` may flag them, which is why `make lint` excludes `examples/`. Point that out when it happens: vet catching the bug is part of the lesson.
 
 ### Step 6.1 — Goroutines, WaitGroups, channels
 
 **Problem.** The worker (Phase 7) runs many jobs at once. The learner needs a solid mental model of goroutines and channels first.
 
 **Teach.**
+
 - A goroutine is a function running concurrently, very cheap (KB-sized stacks), scheduled by the Go runtime onto OS threads (M:N scheduling).
 - When `main` returns, the program exits and **every goroutine is killed**.
-- `sync.WaitGroup`: `Add` *before* starting the goroutine, `defer Done()` inside it, `Wait()` to block until all are done. If the Go version has it, mention `wg.Go(func(){...})` (added in Go 1.25), which does Add/Done for you.
+- `sync.WaitGroup`: `Add` _before_ starting the goroutine, `defer Done()` inside it, `Wait()` to block until all are done. If the Go version has it, mention `wg.Go(func(){...})` (added in Go 1.25), which does Add/Done for you.
 - Channels: typed pipes. **Unbuffered** = a hand-off (the sender blocks until a receiver takes the value). **Buffered** = a queue with capacity (the sender blocks only when it's full).
 - `close(ch)` signals "no more values". `for v := range ch` stops at close. Receiving from a closed channel returns the zero value with `ok == false`. **Sending on a closed channel panics.** Rule of thumb: only the sender closes.
 
 **Build** (one folder per program):
+
 1. `01_goroutines`: start 5 goroutines that print; `main` returns immediately (predict: little or no output). Then "fix" it with `time.Sleep` (and explain why that's wrong).
-2. `02_waitgroup`: the correct fix with `WaitGroup`. Show the bug of calling `wg.Add(1)` *inside* the goroutine (a race with `Wait`).
+2. `02_waitgroup`: the correct fix with `WaitGroup`. Show the bug of calling `wg.Add(1)` _inside_ the goroutine (a race with `Wait`).
 3. `03_channels_unbuffered`: ping-pong between two goroutines; print timestamps to show the blocking hand-off.
 4. `04_channels_buffered`: a producer fills a buffer of 3 with a slow consumer; logs show when the producer blocks.
 5. `05_pipeline`: generator → squarer → printer, connected by channels, with proper `close` so every stage stops.
@@ -1400,6 +1475,7 @@ stateDiagram-v2
 **Walkthrough focus.** For each program, which goroutine blocks where, and why.
 
 **Check your understanding.**
+
 1. Unbuffered vs buffered channel: when does the sender block in each?
 2. Who should close a channel, and why?
 3. Why is `time.Sleep` not a real fix for `01`?
@@ -1411,10 +1487,11 @@ stateDiagram-v2
 ### Step 6.2 — `select`, timeouts, and `context`
 
 **Teach.**
+
 - `select` waits on several channel operations and runs whichever is ready first; `default` makes it non-blocking.
 - Timeouts with `time.After`; periodic work with `time.NewTicker` (and why you must `Stop()` it).
 - **`context`:** `WithCancel`, `WithTimeout`, `WithDeadline`; the cancellation tree (cancel a parent and every child is cancelled); `ctx.Done()` and `ctx.Err()`.
-- `context.WithCancelCause` / `context.Cause` (record *why* something was cancelled; used in 8.2 and 9.1).
+- `context.WithCancelCause` / `context.Cause` (record _why_ something was cancelled; used in 8.2 and 9.1).
 - `context.WithoutCancel` (a child that keeps the parent's values but **not** its cancellation; used for acks during shutdown in Phase 9).
 - The canonical background loop:
   ```go
@@ -1432,6 +1509,7 @@ stateDiagram-v2
 - `time.Sleep` ignores cancellation. Use a `select` on `ctx.Done()` and a timer instead (write a `sleepCtx(ctx, d) bool` helper).
 
 **Build.**
+
 1. `06_select_timeout`: two channels with different delays plus a timeout case.
 2. `07_context_tree`: a parent context with three child goroutines running ticker loops; cancel the parent after 1s and watch all three stop; print `ctx.Err()`. Add a `WithTimeout` child that stops on its own.
 3. `08_context_cause_and_without_cancel`: show `Cause` returning a custom error; show that a `WithoutCancel` child stays alive after its parent is cancelled.
@@ -1439,6 +1517,7 @@ stateDiagram-v2
 **Verify.** Run each, predicting first.
 
 **Check your understanding.**
+
 1. How do you stop a goroutine that's running a ticker loop?
 2. What's the difference between `ctx.Err()` and `context.Cause(ctx)`?
 3. When would you want `WithoutCancel`?
@@ -1450,20 +1529,23 @@ stateDiagram-v2
 ### Step 6.3 — Shared memory: races, mutexes, atomics
 
 **Teach.**
+
 - A **data race**: two goroutines access the same memory at the same time and at least one writes. `counter++` is really read → add → write, and those steps interleave.
-- The race detector (`-race`) finds races that *actually happen during that run*. It can't prove there are none.
+- The race detector (`-race`) finds races that _actually happen during that run_. It can't prove there are none.
 - `sync.Mutex` (and `RWMutex`): protect a critical section; always `defer mu.Unlock()`.
 - `sync/atomic` types (`atomic.Int64`, `atomic.Bool`): for single counters and flags.
 - Go maps aren't safe for concurrent writes; the runtime may crash with `fatal error: concurrent map writes`.
 - The proverb "Don't communicate by sharing memory; share memory by communicating", and when a mutex is simply the clearer choice.
 
 **Build.**
+
 1. `09_race_counter`: 1,000 goroutines do `counter++`. Predict the total, run it, then run with `-race` and read the report together. Fix with a mutex, then with `atomic.Int64`.
 2. `10_map_race`: concurrent map writes crash; fix with a mutex-guarded struct.
 
 **Verify.** `go run ./examples/concurrency/09_race_counter`, `go run -race ./examples/concurrency/09_race_counter`.
 
 **Check your understanding.**
+
 1. Why is `counter++` not safe?
 2. Mutex or atomic: which would you use for an in-flight job counter, and which for a map of job IDs?
 3. If `-race` reports nothing, is your code race-free?
@@ -1475,6 +1557,7 @@ stateDiagram-v2
 ### Step 6.4 — Patterns and pitfalls: semaphores, errgroup, leaks, deadlocks
 
 **Teach.**
+
 - **Semaphore** with a buffered channel: `sem := make(chan struct{}, N)`; send to acquire, receive to release. It limits concurrency to N. This is exactly how the worker will bound in-flight jobs.
 - **`errgroup.WithContext`**: run a group of goroutines; the first error cancels the shared context; `Wait` returns that first error. `SetLimit(n)` bounds concurrency. Used in `cmd/server` to run the gRPC server and background loops together.
 - **Goroutine leaks:** a goroutine blocked forever (for example, sending to a channel nobody reads) is never collected. Fix with buffering or a `ctx.Done()` case.
@@ -1482,6 +1565,7 @@ stateDiagram-v2
 - Two worker-pool shapes: a fixed pool of N goroutines reading a jobs channel, vs one goroutine per job bounded by a semaphore. We use the second in Phase 7 (preview why).
 
 **Build.**
+
 1. `11_semaphore`: 10 tasks, at most 3 at a time; print in-flight count (atomic) on start and finish.
 2. `12_errgroup`: three tasks, one fails after 200ms; the others notice `ctx.Done()` and stop; print the returned error.
 3. `13_leak`: a function that leaks a goroutine on each call; print `runtime.NumGoroutine()` growing; fix it.
@@ -1491,6 +1575,7 @@ stateDiagram-v2
 **Verify.** Run each; `go get golang.org/x/sync/errgroup` for 12.
 
 **Check your understanding.**
+
 1. How does a buffered channel act as a semaphore?
 2. In an errgroup, what happens to the other goroutines when one returns an error?
 3. Name two ways a goroutine can leak.
@@ -1508,6 +1593,7 @@ stateDiagram-v2
 **Teach.** Function types (`type Handler func(ctx context.Context, job Job) error`). A map from string to handler. The **handler contract**: respect `ctx` cancellation, return an error on failure, be idempotent (explained in Phase 8), and never assume you'll run only once.
 
 **Build.**
+
 1. `internal/worker/handler.go`:
    ```go
    // Job is what a handler receives.
@@ -1533,12 +1619,13 @@ stateDiagram-v2
    - `flaky`: payload `{"fail_rate": 0.3}`; fails randomly with `"flaky failure"`.
    - `always_fail`: returns `errors.New("always fails")`.
    - `panic`: `panic("boom")`.
-   (Later: `record_effect` in 8.3, `permanent_fail` in 11.1.)
+     (Later: `record_effect` in 8.3, `permanent_fail` in 11.1.)
 3. Tests: `sleep` returns promptly when its context is cancelled; a bad payload returns an error.
 
 **Verify.** `make test`.
 
 **Check your understanding.**
+
 1. Why must `sleep` use `select` instead of `time.Sleep`?
 2. Why is panicking on duplicate registration acceptable here?
 
@@ -1551,6 +1638,7 @@ stateDiagram-v2
 **Problem.** Run many jobs concurrently in one process, never more than N at once; don't hammer the server when there's no work; survive handler panics.
 
 **Teach.**
+
 - **Pull + backpressure:** fetch only as many jobs as there are free slots, so a worker never holds jobs it can't start (their leases would tick away unused).
 - The semaphore from 6.4, applied: a token = one running job.
 - **Idle backoff polling:** when a fetch returns nothing, wait 100ms, then 200ms, 400ms… up to 2s; reset on success. Trade-off: latency vs load on the server. Long-polling (Phase 17) improves on this.
@@ -1561,6 +1649,7 @@ stateDiagram-v2
 **Design decisions.** Goroutine-per-job bounded by a semaphore (vs a fixed pool of N goroutines reading a channel). It makes "how many can I fetch?" trivial to compute, and goroutines are cheap.
 
 **Build.**
+
 1. `internal/worker/worker.go`:
    ```go
    type Config struct {
@@ -1649,6 +1738,7 @@ stateDiagram-v2
 **Walkthrough focus.** Trace the semaphore through one cycle with N = 3: tokens taken, the batch fetched, unused tokens returned, tokens released as jobs finish. Name each goroutine's owner and how it stops. Explain why `recover` sits where it does.
 
 **Check your understanding.**
+
 1. Why fetch only `slots` jobs instead of a fixed 100?
 2. What would happen if `recover()` were in `Run` instead of in the job goroutine?
 3. What happens to a job if the `CompleteJob` call fails because of a network blip?
@@ -1662,10 +1752,12 @@ stateDiagram-v2
 **Problem.** Prove the worker processes everything, respects its concurrency limit, and survives panics. Then watch it run against the real server.
 
 **Teach.**
+
 - **Never sleep a fixed time in tests;** poll for a condition with a deadline. Write `testutil.WaitFor(t, timeout, func() bool)`.
 - Measuring max concurrency with an atomic counter plus a compare-and-swap "max" loop.
 
 **Build.**
+
 1. `internal/testutil/wait.go`: `WaitFor(t *testing.T, timeout time.Duration, cond func() bool)`, polling every 20ms and failing with a clear message on timeout.
 2. `internal/worker/worker_test.go` (`package worker_test`, using `testutil.NewTestServer`):
    - `TestWorker_ProcessesAllJobs`: enqueue 200 `noop` jobs; run a worker (concurrency 8) in a goroutine with a cancellable ctx; `WaitFor` all `succeeded` (count via SQL); cancel; `Run` returns.
@@ -1681,12 +1773,14 @@ stateDiagram-v2
 **Walkthrough focus.** How the tests prove each property; what the two-worker run shows about `SKIP LOCKED` in practice.
 
 **Check your understanding.**
+
 1. Why is `WaitFor` better than `time.Sleep(2 * time.Second)` in tests?
 2. In the two-worker run, what stops both workers taking the same job?
 
 **Done when.** All worker tests pass under `-race`, and the learner has watched two workers share a queue.
 
 ---
+
 ## Phase 8 — Leases, heartbeats, and at-least-once delivery
 
 ### Step 8.1 — Stuck jobs and the lease reaper
@@ -1696,15 +1790,17 @@ stateDiagram-v2
 **Demo the problem** (FRAME stage): `make build`; run the server, and run the worker as the **compiled binary** `./bin/worker` (not `make run-worker`: `go run` starts a child process, and killing the parent doesn't kill the child); `./bin/jqctl enqueue --type sleep --payload '{"ms":60000}'`; once the worker logs that it started, `kill -9 $(pgrep -f bin/worker)`. Then in psql: the job is `running` with a `lease_owner` that no longer exists. Restart the worker: it never picks the job up.
 
 **Teach.**
+
 - **You can't tell "slow" from "dead"** over a network. There's no perfect failure detector, so systems use **timeouts**.
 - A **lease** is time-limited ownership: "you own this job until `lease_expires_at`". Same idea as SQS's visibility timeout, Kafka's session timeout, and Kubernetes Lease objects.
 - The **reaper:** a periodic sweep that returns jobs with expired leases to `pending`.
-- **One clock** (Law 2): leases are set *and* checked with Postgres `now()`, so clock differences between machines don't matter.
+- **One clock** (Law 2): leases are set _and_ checked with Postgres `now()`, so clock differences between machines don't matter.
 - The reaper is safe to run on every server replica: it uses the same CTE + `FOR UPDATE SKIP LOCKED` + `LIMIT` pattern, so replicas split the work instead of fighting over it.
 - Choosing a lease duration: shorter = faster recovery, but more false positives on slow jobs (fixed by heartbeats in 8.2).
 - The background-loop pattern from 6.2, now owned by the server's `errgroup`.
 
 **Build.**
+
 1. `internal/store/migrations/0003_add_running_lease_index.sql`:
    ```sql
    -- +goose Up
@@ -1739,13 +1835,14 @@ stateDiagram-v2
    - `func (s *Service) RunReaper(ctx context.Context, interval time.Duration) error`: ticker loop; log errors but keep going; return `nil` when `ctx` is cancelled. (Convention for all background loops: return `nil` on cancellation; return an error only for something fatal.)
 4. `cmd/server/main.go`: switch to `errgroup.WithContext`, with three goroutines: `Serve`, `RunReaper`, and one that waits for `gctx.Done()` and calls `GracefulStop()`. Add `ReaperInterval` to config (`JQ_REAPER_INTERVAL`, default 5s).
 5. Add `ReaperInterval time.Duration` to `testutil.ServerOptions` (0 = don't run a reaper) and start `RunReaper` in the test server when it's set. Run **all** test-server background loops (this one, and later stats/promoter/reconciler) in an errgroup under a cancellable context, and in the test server's `t.Cleanup` **cancel and wait for them first**. (`t.Cleanup` runs in reverse order, so this runs before `NewTestDB`'s cleanup drops the database; otherwise a loop would query a database that's being dropped.)
-6. Tests: claim a job, force expiry with SQL (`UPDATE jobs SET lease_expires_at = now() - interval '1 second' WHERE id = $1`), `ReapOnce` → `pending`, lease cleared, `attempts` still 1, `last_error` set; re-claim → `attempts = 2`; the *old* owner's `CompleteJob` with attempt 1 → `ErrLeaseLost` (fencing proven end to end). A job with an unexpired lease is not touched.
+6. Tests: claim a job, force expiry with SQL (`UPDATE jobs SET lease_expires_at = now() - interval '1 second' WHERE id = $1`), `ReapOnce` → `pending`, lease cleared, `attempts` still 1, `last_error` set; re-claim → `attempts = 2`; the _old_ owner's `CompleteJob` with attempt 1 → `ErrLeaseLost` (fencing proven end to end). A job with an unexpired lease is not touched.
 
 **Verify.** `make test`. Then repeat the demo with `make run-server JQ_LEASE_DURATION=10s` (worker as `./bin/worker`): kill the worker mid-job, start a new worker, and watch the job get reaped within ~10–15s and complete with `attempts = 2`.
 
 **Walkthrough focus.** The reaper SQL. The server's errgroup: who owns which goroutine and how each one stops. The worst-case "stuck" time (lease duration + reaper interval).
 
 **Check your understanding.**
+
 1. Why not let the worker's clock decide when a lease has expired?
 2. What's the longest a crashed job can sit before another worker can take it?
 3. What if a job legitimately takes longer than the lease? (Answer: it gets reaped while still running, which motivates 8.2.)
@@ -1759,15 +1856,17 @@ stateDiagram-v2
 **Problem.** A 5-minute job with a 30-second lease would be reaped while still running, so two workers would run it at once. We can't just set huge leases either, because crash recovery would get slow.
 
 **Teach.**
+
 - **Heartbeats:** while a job runs, the worker renews its lease every `lease / 3` (so two missed beats are tolerated).
 - Renewal is a fenced CAS (Law 6). If it fails, someone else may now own the job, so **stop working**: cancel the handler's context.
-- `context.WithCancelCause` lets us record *why* we cancelled (`errLeaseLost` vs a normal finish).
+- `context.WithCancelCause` lets us record _why_ we cancelled (`errLeaseLost` vs a normal finish).
 - **Zombies:** a handler that ignores `ctx` keeps running after we cancel it. Its result will be rejected by fencing, but any side effects it already caused (an email, a charge) may happen twice. That's why handlers must be idempotent (8.3).
 - Heartbeat errors other than "lease lost" (for example, server briefly unavailable) aren't fatal: keep trying; the lease is still valid until it expires.
 
 **Design decisions.** The server tells workers the lease duration in `FetchJobsResponse`, so lease policy lives in one place.
 
 **Build.**
+
 1. `func (s *Store) ExtendLease(ctx context.Context, p ExtendLeaseParams) (time.Time, error)` where `ExtendLeaseParams{ID int64; WorkerID string; Attempt int; LeaseDuration time.Duration}`:
    ```sql
    UPDATE jobs
@@ -1811,7 +1910,7 @@ stateDiagram-v2
    // ...then complete or fail as before
    ```
    `heartbeatLoop`: ticker at `LeaseDuration / 3` (if `LeaseDuration <= 0`, e.g. an older server that doesn't send it, use 30s: `time.NewTicker` panics on a zero interval); each tick calls `Heartbeat` with a timeout of `LeaseDuration / 3`; on `codes.FailedPrecondition` or `codes.NotFound` → `cancel(errLeaseLost)` and return; other errors → log and continue; return when `jobCtx` is done.
-   Note the subtlety: `context.Cause` returns the *first* cause, so a later `cancel(nil)` doesn't overwrite `errLeaseLost`.
+   Note the subtlety: `context.Cause` returns the _first_ cause, so a later `cancel(nil)` doesn't overwrite `errLeaseLost`.
 5. Tests:
    - `TestHeartbeat_KeepsLongJobAlive`: test server with lease 1s and reaper interval 200ms; a 3-second `sleep` job → `succeeded` with `attempts = 1`.
    - `TestHeartbeat_LostLeaseCancelsHandler`: a handler that blocks until `ctx.Done()` and records `context.Cause(ctx)`; once it's running, steal the lease with SQL (`UPDATE jobs SET lease_owner = 'thief' WHERE id = $1`); assert the handler was cancelled, the worker didn't ack, and the job is still owned by `thief`.
@@ -1821,9 +1920,10 @@ stateDiagram-v2
 **Walkthrough focus.** The per-job goroutine pair (handler + heartbeat): who owns the heartbeat goroutine, how it stops, and why we wait on `hbDone`.
 
 **Check your understanding.**
+
 1. Why heartbeat every `lease / 3` and not every `lease`?
 2. What should a well-behaved handler do when its `ctx` is cancelled?
-3. Why must the worker *not* ack after losing the lease?
+3. Why must the worker _not_ ack after losing the lease?
 
 **Done when.** Long jobs survive via heartbeats, and lost leases cancel handlers.
 
@@ -1831,21 +1931,23 @@ stateDiagram-v2
 
 ### Step 8.3 — Idempotent handlers and the crash demo
 
-**Problem.** At-least-once means duplicates *will* happen, for example when a worker crashes after doing the work but before acking. Handlers need effects that are safe to repeat.
+**Problem.** At-least-once means duplicates _will_ happen, for example when a worker crashes after doing the work but before acking. Handlers need effects that are safe to repeat.
 
 **Teach.**
+
 - **Delivery semantics:**
-  - *At-most-once:* ack before working. A crash loses the job.
-  - *At-least-once:* ack after working. A crash repeats the job.
-  - *Exactly-once:* impossible in general across independent systems. What's achievable is **effectively-once** = at-least-once delivery + idempotent effects.
-  Draw both crash windows on a timeline.
+  - _At-most-once:_ ack before working. A crash loses the job.
+  - _At-least-once:_ ack after working. A crash repeats the job.
+  - _Exactly-once:_ impossible in general across independent systems. What's achievable is **effectively-once** = at-least-once delivery + idempotent effects.
+    Draw both crash windows on a timeline.
 - Idempotent handler patterns:
   1. Naturally idempotent operations (`SET x = 5`, not `x = x + 1`).
-  2. A **dedupe table** keyed by job ID, written *in the same transaction as the effect*, in the target system.
+  2. A **dedupe table** keyed by job ID, written _in the same transaction as the effect_, in the target system.
   3. Passing the job ID as the idempotency key to an external API (e.g. a payment provider).
 - Why the dedupe insert and the effect must be in the same transaction.
 
 **Build.**
+
 1. `internal/store/migrations/0004_create_demo_effects.sql`:
    ```sql
    -- +goose Up
@@ -1860,26 +1962,28 @@ stateDiagram-v2
    -- +goose Down
    DROP TABLE demo_effects;
    ```
-   The *effect* is the row existing exactly once. `deliveries` only records how many times the handler ran.
+   The _effect_ is the row existing exactly once. `deliveries` only records how many times the handler ran.
 2. `handlers.RegisterRecordEffect(r *worker.Registry, pool *pgxpool.Pool, workerID string)` registers `record_effect`. Payload: `{"sleep_ms": 200, "crash_after_effect": false}`. It sleeps (ctx-aware), then:
    ```sql
    INSERT INTO demo_effects (job_id, worker_id) VALUES ($1, $2)
    ON CONFLICT (job_id) DO UPDATE SET deliveries = demo_effects.deliveries + 1
    ```
    If `crash_after_effect` is true **and** `job.Attempt == 1`, call `os.Exit(1)` right after the insert. This deterministically simulates a crash in the worst window: work done, ack not sent.
-3. Add `DatabaseURL string` (`JQ_DATABASE_URL`, default empty) to `config.Worker`. `cmd/worker/main.go`: if it's set, open a small pool (`MaxConns = 4`) and register `record_effect`. Comment that this is demo-only: real workers talk to *their own* systems, not the queue database (Law 4).
+3. Add `DatabaseURL string` (`JQ_DATABASE_URL`, default empty) to `config.Worker`. `cmd/worker/main.go`: if it's set, open a small pool (`MaxConns = 4`) and register `record_effect`. Comment that this is demo-only: real workers talk to _their own_ systems, not the queue database (Law 4).
 4. Test: call the handler twice directly for the same job → one row, `deliveries = 2`.
 5. Add a "Delivery guarantees" section to `docs/ARCHITECTURE.md` (the AI drafts it with the learner).
 
 **Verify.**
+
 - `make test`.
 - Crash demo: `make run-server JQ_LEASE_DURATION=10s`; worker running as `./bin/worker`; `./bin/jqctl enqueue --type record_effect --payload '{"sleep_ms":100,"crash_after_effect":true}'`. The worker exits. Restart it. After the lease expires, the job completes on attempt 2. In psql: `SELECT * FROM demo_effects;` → **one row, `deliveries = 2`**. The job ran twice, the effect happened once.
 
 **Walkthrough focus.** Map the crash demo onto the delivery-semantics timeline. Point to the exact line where a non-idempotent handler would have caused a duplicate.
 
 **Check your understanding.**
+
 1. In which exact window does a crash cause a duplicate delivery?
-2. Could we get exactly-once by acking *before* running the handler? What would we lose?
+2. Could we get exactly-once by acking _before_ running the handler? What would we lose?
 3. Why must the dedupe write and the effect be in one transaction?
 
 **Done when.** The crash demo shows two deliveries and one effect.
@@ -1890,20 +1994,22 @@ stateDiagram-v2
 
 ### Step 9.1 — Worker graceful shutdown and job release
 
-**Problem.** Deploys and restarts send SIGTERM. Right now, Ctrl-C cancels running handlers, and they're recorded as *failures*: attempts are burned, `last_error` says "context canceled", and if the process is killed instead, jobs sit until their leases expire.
+**Problem.** Deploys and restarts send SIGTERM. Right now, Ctrl-C cancels running handlers, and they're recorded as _failures_: attempts are burned, `last_error` says "context canceled", and if the process is killed instead, jobs sit until their leases expire.
 
 **Demo the problem:** enqueue 5 `sleep` jobs of 10s, start a worker, press Ctrl-C after 2s, and look at `attempts` and `last_error` in psql.
 
 **Teach.**
+
 - Signals: SIGINT (Ctrl-C), SIGTERM (`docker stop`, Kubernetes, systemd), SIGKILL (can't be caught). The Kubernetes flow: SIGTERM → grace period (default 30s) → SIGKILL.
 - **The drain pattern:** (1) stop taking new work, (2) let in-flight work finish within a deadline, (3) hand back what didn't finish, (4) close connections, (5) exit.
-- **The two-context pattern:** `ctx` (cancelled on signal: stops *fetching*) and `jobsCtx` (cancelled only when the shutdown deadline passes: stops *jobs*). Draw the timeline.
+- **The two-context pattern:** `ctx` (cancelled on signal: stops _fetching_) and `jobsCtx` (cancelled only when the shutdown deadline passes: stops _jobs_). Draw the timeline.
 - **Release vs Fail:** release means "I'm stopping, not the job's fault". It doesn't count as an attempt.
 - **You can't kill a goroutine in Go.** If a handler ignores cancellation, all we can do is stop waiting for it. Its lease will expire and the reaper will recover the job.
 - A second Ctrl-C forces an immediate exit.
 - Shutdown timeout must be shorter than the orchestrator's grace period (25s < 30s).
 
 **Build.**
+
 1. `func (s *Store) ReleaseJob(ctx context.Context, p ReleaseParams) (Job, error)` with `ReleaseParams{ID int64; WorkerID string; Attempt int}`:
    ```sql
    UPDATE jobs
@@ -1959,7 +2065,7 @@ stateDiagram-v2
        stop() // restore default signal handling: a second Ctrl-C kills the process immediately
    }()
    ```
-   Close the gRPC connection only *after* `Run` returns, so acks and releases can still be sent.
+   Close the gRPC connection only _after_ `Run` returns, so acks and releases can still be sent.
 6. Tests:
    - `TestShutdown_DrainsInFlight`: concurrency 4, enqueue 8 `sleep` jobs of 300ms; wait until 4 are `running`; cancel; `Run` returns in < 1s; exactly 4 `succeeded`, 4 still `pending` with `attempts = 0` (nothing new was fetched after cancel).
    - `TestShutdown_ReleasesOnTimeout`: ShutdownTimeout 200ms, ctx-respecting 10s jobs → after cancel they end `pending` with `attempts = 0` and `last_error = 'released during worker shutdown'`.
@@ -1970,6 +2076,7 @@ stateDiagram-v2
 **Walkthrough focus.** Draw the shutdown timeline with both contexts. Why `jobsCtx` is built from `WithoutCancel(ctx)`. The outcome decision order in `execute`.
 
 **Check your understanding.**
+
 1. Why derive `jobsCtx` from `context.WithoutCancel(ctx)` instead of from `ctx`?
 2. Why can't Go forcibly stop a goroutine, and what do we do instead?
 3. Release subtracts one from `attempts`, but the reaper doesn't. Why the difference?
@@ -1984,6 +2091,7 @@ stateDiagram-v2
 **Problem.** The server must stop accepting RPCs, finish the ones in flight (like a `CompleteJob`), stop background loops, and close the database pool, in that order. Load balancers also need to know when to stop sending traffic.
 
 **Teach.**
+
 - `GracefulStop` (refuse new RPCs, wait for in-flight ones) vs `Stop` (immediate). `GracefulStop` can hang on long calls, so bound it with a timeout and then fall back to `Stop`.
 - Shutdown order is the reverse of startup; `defer` runs LIFO.
 - `errgroup` in `main`: the first component to fail cancels the others (for example, the port is already in use → everything stops cleanly).
@@ -1991,6 +2099,7 @@ stateDiagram-v2
 - gRPC clients reconnect automatically: workers ride through a server restart, logging `Unavailable` with backoff meanwhile.
 
 **Build.**
+
 1. `cmd/server/main.go`: config `ShutdownTimeout` (`JQ_SERVER_SHUTDOWN_TIMEOUT`, 10s). In `run`:
    ```go
    hs := health.NewServer()
@@ -2020,6 +2129,7 @@ stateDiagram-v2
 2. Log each shutdown stage, so the order is visible.
 
 **Verify.**
+
 - `grpcurl -plaintext localhost:50051 grpc.health.v1.Health/Check` → `SERVING`.
 - With server and worker processing `sleep` jobs: Ctrl-C the server → watch the shutdown stages, and the worker logging `Unavailable` and retrying; restart the server → the worker carries on by itself.
 - Start a second server on the same port → it fails fast with a clear "address already in use" error and exits cleanly.
@@ -2027,6 +2137,7 @@ stateDiagram-v2
 **Walkthrough focus.** The errgroup and each goroutine's stop condition. The order: health → RPCs → background loops → DB pool.
 
 **Check your understanding.**
+
 1. Why close the DB pool last?
 2. What does a client see while the server is in `GracefulStop`?
 3. Why put a timeout on `GracefulStop`?
@@ -2044,14 +2155,16 @@ stateDiagram-v2
 **Demo the problem:** enqueue one `always_fail` job, run a worker for 3 seconds, stop it, and check `attempts` in psql (hundreds or thousands).
 
 **Teach.**
+
 - Transient failures (timeouts, 503s, deadlocks) vs permanent ones (bad input). Only transient ones deserve retries (permanent errors are handled in 11.1).
 - **Exponential backoff:** `delay = base × 2^(attempt−1)`, capped at `max`.
-- **Thundering herd:** 1,000 jobs fail at the same moment during an outage → without randomness they all retry at the *same* moments → synchronized spikes. **Jitter** spreads them out. Full jitter `random(0, ceiling)`, equal jitter, decorrelated jitter (AWS Architecture Blog, Appendix C). We use **full jitter**.
+- **Thundering herd:** 1,000 jobs fail at the same moment during an outage → without randomness they all retry at the _same_ moments → synchronized spikes. **Jitter** spreads them out. Full jitter `random(0, ceiling)`, equal jitter, decorrelated jitter (AWS Architecture Blog, Appendix C). We use **full jitter**.
 - Integer overflow: `base << 70` overflows. Stop doubling once you reach the cap.
 - **Testable randomness:** inject the random source (`func() float64`) so tests are deterministic.
 - Policy lives on the **server**: one consistent policy that workers can't get wrong.
 
 **Build.**
+
 1. `internal/backoff/backoff.go`:
    ```go
    // Policy computes retry delays using exponential backoff with full jitter.
@@ -2089,6 +2202,7 @@ stateDiagram-v2
 **Walkthrough focus.** The doubling loop and why it can't overflow. What the simulation shows about synchronized retries.
 
 **Check your understanding.**
+
 1. Full jitter can return 0 (an immediate retry). Why is that acceptable?
 2. Why compute the delay on the server rather than the worker?
 3. With base 1s and max 10m, at which attempt does the ceiling first hit the cap?
@@ -2100,6 +2214,7 @@ stateDiagram-v2
 ### Step 10.2 — Wire backoff into FailJob
 
 **Build.**
+
 1. Add `RetryDelay time.Duration` to `store.FailParams`. In the `FailJob` SQL, replace `run_at = now()` with `run_at = now() + ($5::bigint * interval '1 millisecond')` and pass `RetryDelay.Milliseconds()`. Remove the "retries immediately" part of the NOTE comment (keep the dead-letter part).
 2. Add `Backoff backoff.Policy` to `queue.Options`. `Service.FailJob` computes `delay := s.opts.Backoff.Delay(in.Attempt)`. Config: `JQ_BACKOFF_BASE` (1s), `JQ_BACKOFF_MAX` (10m); validate at startup.
 3. Proto: `FailJobResponse` gets `google.protobuf.Timestamp next_run_at = 2;`. `make proto-breaking`.
@@ -2110,6 +2225,7 @@ stateDiagram-v2
 **Verify.** `make test`. Manual: an `always_fail` job now retries with growing gaps. Read the log timestamps together. It still retries forever, which motivates Phase 11.
 
 **Check your understanding.**
+
 1. After this change, what stops a failing job from being claimed immediately?
 2. Why use a millisecond integer for the delay instead of passing a Go `time.Time`?
 
@@ -2124,14 +2240,16 @@ stateDiagram-v2
 **Problem.** `always_fail` retries forever (eventually every 10 minutes, forever). That's a **poison message**. And some errors can never succeed on retry (invalid payload, unknown job type), so retrying them is pointless.
 
 **Teach.**
+
 - Poison messages; `max_attempts`; the dead-letter queue (DLQ) as **quarantine, not trash**. Compare SQS redrive policies and RabbitMQ dead-letter exchanges.
-- **Error classification:** retryable (timeouts, 5xx) vs non-retryable (validation, 4xx, unknown type). Default to *retryable* when unsure, since it's the safer mistake.
+- **Error classification:** retryable (timeouts, 5xx) vs non-retryable (validation, 4xx, unknown type). Default to _retryable_ when unsure, since it's the safer mistake.
 - A `Permanent(err)` wrapper detected with `errors.As`.
-- **proto3 bool pitfall:** a field named `retryable` defaults to `false`, so an old client would accidentally mark *every* failure as permanent. Name it `non_retryable` so the zero value is the safe one.
+- **proto3 bool pitfall:** a field named `retryable` defaults to `false`, so an old client would accidentally mark _every_ failure as permanent. Name it `non_retryable` so the zero value is the safe one.
 - **The reaper must respect `max_attempts` too.** A job that crashes the worker every time never reaches `FailJob`. Without this check it would crash workers forever. This is the payoff for counting attempts at claim time (3.2).
 - Terminal states set `completed_at` (invariant 2).
 
 **Build.**
+
 1. Add `NonRetryable bool` to `store.FailParams`. New `FailJob` SQL:
    ```sql
    UPDATE jobs
@@ -2155,6 +2273,7 @@ stateDiagram-v2
 **Verify.** `make test`. Manual: `./bin/jqctl enqueue --type always_fail --max-attempts 3` → watch three attempts with growing gaps, then the job lands in `dead`.
 
 **Check your understanding.**
+
 1. Why default to retryable?
 2. Describe the poison pill that would loop forever without the reaper's `max_attempts` check.
 3. Why `non_retryable` and not `retryable`?
@@ -2168,13 +2287,15 @@ stateDiagram-v2
 **Problem.** Operators need to see what's in the DLQ, fix the root cause, and replay jobs, one at a time or in bulk.
 
 **Teach.**
-- Operating a DLQ: alert on growth, inspect, fix the root cause, *then* replay. Never auto-replay blindly.
+
+- Operating a DLQ: alert on growth, inspect, fix the root cause, _then_ replay. Never auto-replay blindly.
 - Replay is only safe because handlers are idempotent.
 - **Keyset pagination** (`WHERE id > $after ORDER BY id LIMIT n`) vs `OFFSET` (scans and throws away rows; pages shift when rows are inserted).
 - Bound bulk operations (batches with `LIMIT`) to avoid giant transactions and long-held locks.
 - Admin APIs need authentication and authorization in real systems (mTLS, tokens, RBAC). That's out of scope here; note it in the README's limitations.
 
 **Build.**
+
 1. `internal/store/migrations/0005_add_state_queue_index.sql`:
    ```sql
    -- +goose Up
@@ -2229,6 +2350,7 @@ stateDiagram-v2
 **Verify.** `make test`; manually fill the DLQ (`always_fail --max-attempts 1` a few times), list it, replay one, replay all.
 
 **Check your understanding.**
+
 1. Why keyset pagination instead of `OFFSET`?
 2. What must be true before you replay a batch of dead jobs?
 3. Why does `replay-all` require `--yes`?
@@ -2236,6 +2358,7 @@ stateDiagram-v2
 **Done when.** Operators can list and replay dead jobs from the CLI.
 
 ---
+
 ## Phase 12 — Priority and delayed jobs
 
 ### Step 12.1 — Priority
@@ -2243,12 +2366,14 @@ stateDiagram-v2
 **Problem.** A password-reset email shouldn't wait behind 50,000 newsletter jobs in the same queue.
 
 **Teach.**
+
 - Two levels of priority in this system: **queue order** per worker (`JQ_WORKER_QUEUES=critical,default` checks `critical` first) and a **per-job priority** 0–9 within a queue (higher runs first, default 0).
-- **Strict priority and starvation:** if high-priority work never stops arriving, low-priority work never runs. Mitigations: *aging* (priority grows with wait time), *weighted* queues (Sidekiq-style), separate worker pools. We document starvation rather than solve it.
+- **Strict priority and starvation:** if high-priority work never stops arriving, low-priority work never runs. Mitigations: _aging_ (priority grows with wait time), _weighted_ queues (Sidekiq-style), separate worker pools. We document starvation rather than solve it.
 - **The index must match the `ORDER BY` exactly**, including `DESC`, or Postgres has to sort every pending row before taking the first few.
 - Changing indexes on a live production table: `CREATE INDEX CONCURRENTLY` (can't run inside a transaction; goose supports `-- +goose NO TRANSACTION`). We use a plain `CREATE INDEX` in dev and explain the production approach.
 
 **Build.**
+
 1. `internal/store/migrations/0006_add_priority.sql`:
    ```sql
    -- +goose Up
@@ -2271,6 +2396,7 @@ stateDiagram-v2
 **Verify.** `make test`; `make migrate-up`; `\d jobs`.
 
 **Check your understanding.**
+
 1. What happens to query speed if the index is `(queue, priority, run_at, id)` (ascending) but we `ORDER BY priority DESC`?
 2. How would you prevent starvation if it became a real problem?
 
@@ -2283,11 +2409,13 @@ stateDiagram-v2
 **Problem.** "Send a reminder in 24 hours." "Retry this webhook at 9am."
 
 **Teach.**
+
 - Delayed jobs are just `run_at` in the future; the claim query already filters `run_at <= now()`.
-- **Clock skew:** if a client sends an absolute `run_at` from a laptop whose clock is 5 minutes fast, the job runs 5 minutes early. A *relative* `delay` is converted with the database clock (Law 2) and is immune. Offer both through a protobuf `oneof`.
+- **Clock skew:** if a client sends an absolute `run_at` from a laptop whose clock is 5 minutes fast, the job runs 5 minutes early. A _relative_ `delay` is converted with the database clock (Law 2) and is immune. Offer both through a protobuf `oneof`.
 - Validation: a `run_at` in the past just means "now"; cap delays at 365 days.
 
 **Build.**
+
 1. `EnqueueParams` gets `RunAt *time.Time` and `Delay time.Duration`. In the INSERT: `run_at = COALESCE($n::timestamptz, now() + ($m::bigint * interval '1 millisecond'))`.
 2. Proto `EnqueueRequest`:
    ```proto
@@ -2303,6 +2431,7 @@ stateDiagram-v2
 **Verify.** `make test`. Manual: `./bin/jqctl enqueue --type noop --delay 10s` → the worker picks it up after ~10s, plus up to 2s of idle polling. Explain where that extra latency comes from.
 
 **Check your understanding.**
+
 1. Why is `delay` safer than `run_at` for most clients?
 2. What's the worst-case gap between a job's `run_at` and its execution right now, and why?
 
@@ -2312,16 +2441,18 @@ stateDiagram-v2
 
 ### Step 12.3 — Query-plan lab with `EXPLAIN ANALYZE`
 
-**Problem.** We've *assumed* our indexes work. Let's prove it, and find where they don't.
+**Problem.** We've _assumed_ our indexes work. Let's prove it, and find where they don't.
 
 **Teach.**
+
 - `EXPLAIN` (the plan) vs `EXPLAIN ANALYZE` (runs the query and reports real timings) vs `BUFFERS` (pages read). Reading a plan: Index Scan vs Seq Scan vs Bitmap Heap Scan, Sort nodes, `LockRows`, "Rows Removed by Filter".
-- **Gotcha:** `EXPLAIN ANALYZE` on an `UPDATE` *actually performs the update*. Wrap it in `BEGIN; ... ROLLBACK;`.
+- **Gotcha:** `EXPLAIN ANALYZE` on an `UPDATE` _actually performs the update_. Wrap it in `BEGIN; ... ROLLBACK;`.
 - Planner statistics and `ANALYZE`.
 - **A hidden cost:** future-dated jobs sit inside the `pending` partial index. With priority first in the index, the claim may have to step over thousands of not-yet-due rows ("Rows Removed by Filter"). Fixes: a separate `scheduled` state with a promoter loop, Redis delayed sets (Phase 17), or a different index order (which loses priority ordering).
 - Dead tuples and vacuum: `pg_stat_user_tables.n_dead_tup`, why queue tables churn, and why long transactions hurt.
 
 **Build.** `scripts/sql/explain_lab.sql`, a commented script the AI runs section by section in psql while explaining each result:
+
 1. Seed 200,000 due jobs in queue `lab`:
    ```sql
    INSERT INTO jobs (queue, type, payload, priority, run_at)
@@ -2330,7 +2461,7 @@ stateDiagram-v2
    ANALYZE jobs;
    ```
 2. `BEGIN; EXPLAIN (ANALYZE, BUFFERS) <the claim CTE for queue 'lab', limit 10>; ROLLBACK;` → expect an Index Scan on `jobs_ready_idx`, no Sort, and a `LockRows` node.
-3. Seed 200,000 *future* priority-9 jobs (`run_at = now() + interval '1 day'`), `ANALYZE`, re-run → note "Rows Removed by Filter" and the slower time.
+3. Seed 200,000 _future_ priority-9 jobs (`run_at = now() + interval '1 day'`), `ANALYZE`, re-run → note "Rows Removed by Filter" and the slower time.
 4. Drop `jobs_ready_idx` inside a transaction, re-run, see Seq Scan + Sort, then `ROLLBACK` (the index comes back).
 5. Simulate churn (this respects the `CHECK` constraints): `UPDATE jobs SET state = 'succeeded', completed_at = now(), updated_at = now() WHERE id IN (SELECT id FROM jobs WHERE queue = 'lab' AND state = 'pending' LIMIT 5000);` Then `SELECT n_live_tup, n_dead_tup FROM pg_stat_user_tables WHERE relname = 'jobs';`; run `VACUUM jobs;` and check again.
 6. Clean up: `DELETE FROM jobs WHERE queue = 'lab'; VACUUM ANALYZE jobs;`.
@@ -2339,6 +2470,7 @@ stateDiagram-v2
 **Verify.** Each section's output, explained.
 
 **Check your understanding.**
+
 1. Why wrap `EXPLAIN ANALYZE` of an `UPDATE` in a rolled-back transaction?
 2. What does "Rows Removed by Filter: 200000" tell you?
 3. Which fix for future-dated jobs will Phase 17 implement?
@@ -2354,13 +2486,15 @@ stateDiagram-v2
 **Problem.** Some work must be done by **exactly one** server replica at a time. If two replicas both fire a cron schedule, the job runs twice.
 
 **Teach.**
+
 - Leader election and where it usually comes from: etcd, ZooKeeper, Consul, Kubernetes Leases, or database locks.
 - **Postgres advisory locks:** application-defined locks on a number. Session-level (held until unlocked or the connection closes) vs transaction-level. `pg_try_advisory_lock(key)` returns immediately with true or false.
-- **Pitfall with pools:** a session-level lock belongs to *one connection*. With a pool, the next query may run on a different connection. So the leader must `pool.Acquire()` a **dedicated connection** and hold it for as long as it leads.
-- Failure cases: the leader crashes → its connection closes → Postgres releases the lock → another replica takes over. A **network partition** may leave the old leader *believing* it still leads for a while → two leaders briefly. **Never rely on leader election alone for correctness.** The protected work must also be idempotent (cron uses idempotency keys in 13.2). Same theme as fencing in 3.3.
+- **Pitfall with pools:** a session-level lock belongs to _one connection_. With a pool, the next query may run on a different connection. So the leader must `pool.Acquire()` a **dedicated connection** and hold it for as long as it leads.
+- Failure cases: the leader crashes → its connection closes → Postgres releases the lock → another replica takes over. A **network partition** may leave the old leader _believing_ it still leads for a while → two leaders briefly. **Never rely on leader election alone for correctness.** The protected work must also be idempotent (cron uses idempotency keys in 13.2). Same theme as fencing in 3.3.
 - Check the leader's connection regularly and step down if it fails.
 
 **Build.**
+
 1. `internal/leader/leader.go`:
    ```go
    // SchedulerLockKey is an arbitrary application-chosen advisory lock key.
@@ -2400,6 +2534,7 @@ stateDiagram-v2
 **Walkthrough focus.** The goroutines involved (lead function, watch loop) and how each stops. Why the dedicated connection.
 
 **Check your understanding.**
+
 1. Why can't the elector just run `pg_try_advisory_lock` through the pool like any other query?
 2. What happens when the leader's database connection dies?
 3. Why is leader election alone not enough to guarantee a cron fires once?
@@ -2413,9 +2548,10 @@ stateDiagram-v2
 **Problem.** "Run the cleanup job every night at 2am." Schedules must survive restarts, fire once per tick even with several server replicas, and behave sensibly after downtime.
 
 **Teach.**
+
 - Cron expressions (5 fields: minute, hour, day-of-month, month, day-of-week) and computing `Next(t)`.
 - **Persist `next_run_at`** in the database, so a restart neither loses nor double-fires a tick.
-- **Atomic fire:** enqueue the job *and* advance `next_run_at` in the same transaction.
+- **Atomic fire:** enqueue the job _and_ advance `next_run_at` in the same transaction.
 - **Idempotency key per tick:** `cron:<name>:<unix seconds of the tick>`, a safety net in case two leaders ever overlap.
 - **Misfire policies** after downtime: fire every missed tick, fire once, or skip. We **fire once, then jump to the next future tick** ("coalesce"). Why: a 3-hour outage of an every-minute schedule shouldn't unleash 180 jobs.
 - One clock: read `now()` from the database inside the transaction and compute `Next` from that value.
@@ -2423,6 +2559,7 @@ stateDiagram-v2
 - The library: `robfig/cron/v3` (parser only). It's unmaintained, so wrap parsing in `recover` defensively. `netresearch/go-cron` is an API-compatible alternative.
 
 **Build.**
+
 1. `go get github.com/robfig/cron/v3`.
 2. `internal/store/migrations/0007_create_cron_schedules.sql`:
    ```sql
@@ -2466,7 +2603,7 @@ stateDiagram-v2
    func (s *Scheduler) Run(ctx context.Context)                       // ticker loop calling TickOnce; returns when ctx is done
    func (s *Scheduler) TickOnce(ctx context.Context) (fired int, err error)
    ```
-   `TickOnce`: inside `store.InTx`: `due, now := LockDueCronSchedules(100)`; for each schedule: parse its expression (if it fails, log and `DisableCronSchedule`: fail safe, don't crash the loop); `key := fmt.Sprintf("cron:%s:%d", c.Name, c.NextRunAt.Unix())`; `tx.Enqueue(...)` with that key (if `created == false`, log "duplicate fire suppressed"); `next := sched.Next(now.UTC())` (the first tick strictly after *now*, which coalesces missed ticks; `.UTC()` matters because pgx returns `timestamptz` in Go's local time zone and the parser evaluates schedules without `CRON_TZ` in the location of the time you pass); `tx.AdvanceCronSchedule(c.ID, c.NextRunAt, next)`.
+   `TickOnce`: inside `store.InTx`: `due, now := LockDueCronSchedules(100)`; for each schedule: parse its expression (if it fails, log and `DisableCronSchedule`: fail safe, don't crash the loop); `key := fmt.Sprintf("cron:%s:%d", c.Name, c.NextRunAt.Unix())`; `tx.Enqueue(...)` with that key (if `created == false`, log "duplicate fire suppressed"); `next := sched.Next(now.UTC())` (the first tick strictly after _now_, which coalesces missed ticks; `.UTC()` matters because pgx returns `timestamptz` in Go's local time zone and the parser evaluates schedules without `CRON_TZ` in the location of the time you pass); `tx.AdvanceCronSchedule(c.ID, c.NextRunAt, next)`.
    Leave a comment: "Phase 17 adds an after-commit callback here to notify the Redis index."
 6. `cmd/server/main.go`: create `leader.New(pool, leader.SchedulerLockKey, logger)` and add to the errgroup: `elector.Run(gctx, func(lctx context.Context) { scheduler.Run(lctx) })`.
 7. Tests:
@@ -2474,13 +2611,14 @@ stateDiagram-v2
    - A `* * * * *` schedule whose `next_run_at` is set 5 minutes in the past (via SQL) → `TickOnce` fires **exactly 1** job with key `cron:<name>:<ts>`, and the new `next_run_at` is in the future and ≤ now + 1 minute.
    - `TickOnce` again immediately → 0 fired.
    - Two `TickOnce` calls in parallel goroutines on a freshly due schedule → 1 job in total.
-   - Safety net: reset `next_run_at` to the *same* old value via SQL and tick again → no new job (the idempotency key dedupes it).
+   - Safety net: reset `next_run_at` to the _same_ old value via SQL and tick again → no new job (the idempotency key dedupes it).
 
 **Verify.** `make test`.
 
 **Walkthrough focus.** The `TickOnce` transaction: what's locked, what's written, and what happens if the process crashes halfway (the whole transaction rolls back, so nothing is half-done).
 
 **Check your understanding.**
+
 1. The server is down for 3 hours with an every-minute schedule. How many jobs fire when it comes back, and why?
 2. Which two mechanisms stop a double fire, and which failure does each handle?
 3. Why compute `Next` from the database's `now()`?
@@ -2492,6 +2630,7 @@ stateDiagram-v2
 ### Step 13.3 — Cron admin API and CLI
 
 **Build.**
+
 1. Proto, added to `AdminService`:
    ```proto
    rpc UpsertCronSchedule(UpsertCronScheduleRequest) returns (UpsertCronScheduleResponse);
@@ -2523,11 +2662,13 @@ stateDiagram-v2
 4. Tests for the API: invalid expression → `InvalidArgument`; upsert twice → updated, not duplicated; delete a missing schedule → `NotFound`.
 
 **Verify.**
+
 - `make test`.
 - Manual: add an every-minute `noop` schedule and watch a job appear each minute.
 - Run a second replica: `make run-server JQ_GRPC_LISTEN_ADDR=:50052` (after Phase 15, also `JQ_METRICS_ADDR=:2122`). Only one logs "became leader". Kill the leader (Ctrl-C) → the other takes over within ~5s. Still exactly one job per minute (check `idempotency_key` values in psql).
 
 **Check your understanding.**
+
 1. Why is the field called `disabled` and not `enabled`?
 2. During failover, what would happen if a tick were due at that exact moment?
 
@@ -2542,12 +2683,14 @@ stateDiagram-v2
 **Problem.** Workflows like `extract → (transform_a, transform_b) → load` need jobs that wait for other jobs. A cycle (A waits for B, B waits for A) would deadlock forever, so we must reject invalid graphs up front.
 
 **Teach.**
+
 - A workflow is a **DAG** (directed acyclic graph): nodes are jobs, edges are "depends on".
 - **Topological order:** an ordering where every node comes after its dependencies.
 - **Kahn's algorithm,** step by step on the diamond example: compute in-degrees, start with zero-in-degree nodes, remove them and decrement their children. If some nodes are never processed, there's a cycle.
 - Pure functions (no I/O) are the easiest code to test; use table-driven tests.
 
 **Build.**
+
 1. `internal/dag/dag.go`:
    ```go
    type Node struct {
@@ -2575,6 +2718,7 @@ stateDiagram-v2
 **Verify.** `go test ./internal/dag -v`.
 
 **Check your understanding.**
+
 1. Walk Kahn's algorithm through the diamond by hand.
 2. How does Kahn's algorithm detect a cycle?
 
@@ -2587,6 +2731,7 @@ stateDiagram-v2
 **Problem.** Store a whole workflow atomically: either every job and edge is saved, or none.
 
 **Teach.**
+
 - Graphs in relational databases: an **edge table** (`job_dependencies`).
 - **Counter-based readiness:** each job stores `pending_dependencies`. Checking readiness is O(1), but the counter must be updated atomically (14.3). The alternative, counting unfinished parents on every check, is simpler but slower.
 - One transaction for the whole submission.
@@ -2594,6 +2739,7 @@ stateDiagram-v2
 - Invariant 5 enforced by a `CHECK`: `blocked` ⇔ `pending_dependencies > 0`.
 
 **Build.**
+
 1. `internal/store/migrations/0008_create_workflows.sql`:
    ```sql
    -- +goose Up
@@ -2680,10 +2826,24 @@ stateDiagram-v2
    {
      "name": "diamond-demo",
      "nodes": [
-       {"key": "extract",     "type": "sleep", "payload": {"ms": 500}},
-       {"key": "transform_a", "type": "sleep", "payload": {"ms": 800}, "depends_on": ["extract"]},
-       {"key": "transform_b", "type": "sleep", "payload": {"ms": 300}, "depends_on": ["extract"]},
-       {"key": "load",        "type": "noop",  "depends_on": ["transform_a", "transform_b"]}
+       { "key": "extract", "type": "sleep", "payload": { "ms": 500 } },
+       {
+         "key": "transform_a",
+         "type": "sleep",
+         "payload": { "ms": 800 },
+         "depends_on": ["extract"]
+       },
+       {
+         "key": "transform_b",
+         "type": "sleep",
+         "payload": { "ms": 300 },
+         "depends_on": ["extract"]
+       },
+       {
+         "key": "load",
+         "type": "noop",
+         "depends_on": ["transform_a", "transform_b"]
+       }
      ]
    }
    ```
@@ -2693,6 +2853,7 @@ stateDiagram-v2
 **Verify.** `make test`; submit the diamond with `jqctl` and `workflow get` it. (Nothing past `extract` will run yet; that's 14.3.)
 
 **Check your understanding.**
+
 1. Why insert jobs in topological order?
 2. What does the `jobs_blocked_deps_check` constraint protect against?
 3. Why add an index on `depends_on_job_id` ourselves?
@@ -2706,6 +2867,7 @@ stateDiagram-v2
 **Problem.** When `extract` succeeds, both transforms must become `pending`. `load` must become `pending` only after **both** transforms succeed, even if they finish at the same instant on two different workers.
 
 **Teach.**
+
 - **The lost-update anomaly:** two transactions both read `pending_dependencies = 2`, both write 1, and `load` never unblocks. Draw the timeline.
 - **The fix:** an in-place atomic update, `SET pending_dependencies = pending_dependencies - 1`. The row lock serializes the two updates, and under READ COMMITTED the second one re-reads the latest row version. Contrast with read-modify-write in Go.
 - **In an `UPDATE`, every expression on the right of `SET` sees the OLD row.** So "this was the last dependency" is written `CASE WHEN pending_dependencies = 1 ...` (old value 1 → new value 0).
@@ -2714,6 +2876,7 @@ stateDiagram-v2
 - **Deadlocks:** if two transactions lock the same child rows in different orders, Postgres detects it and aborts one (`40P01`). Locking children in `ORDER BY id` gives a consistent order.
 
 **Build.**
+
 1. Store: `func (s *Store) UnblockChildren(ctx context.Context, parentID int64) ([]Job, error)` (**call inside `InTx`**):
    ```sql
    WITH children AS (
@@ -2745,6 +2908,7 @@ stateDiagram-v2
 **Walkthrough focus.** The unblock SQL line by line, especially the OLD-value semantics of `CASE`. Why it's in the same transaction as `CompleteJob`.
 
 **Check your understanding.**
+
 1. Draw the lost-update timeline if we read the counter in Go and wrote it back.
 2. Why `CASE WHEN pending_dependencies = 1` and not `= 0`?
 3. Why lock children `ORDER BY id`?
@@ -2758,11 +2922,13 @@ stateDiagram-v2
 **Problem.** If `transform_a` dies, `load` can never run. It would sit `blocked` forever. And if an operator fixes the bug and replays `transform_a`, its downstream jobs should come back to life.
 
 **Teach.**
+
 - **Recursive CTEs** (`WITH RECURSIVE`) to walk all descendants in a graph. `UNION` (not `UNION ALL`) avoids visiting a node twice in diamond shapes.
-- Cascading cancellation semantics: *descendants* are cancelled, but **sibling branches keep running** (`transform_b` still completes). The alternative is failing the whole workflow fast; discuss the trade-off.
+- Cascading cancellation semantics: _descendants_ are cancelled, but **sibling branches keep running** (`transform_b` still completes). The alternative is failing the whole workflow fast; discuss the trade-off.
 - **Recompute from the source of truth:** on replay, rebuild `pending_dependencies` by counting parents that haven't succeeded, rather than trying to re-increment counters.
 
 **Build.**
+
 1. Store `CancelDescendants(ctx, jobID int64) ([]Job, error)` (**inside `InTx`**):
    ```sql
    WITH RECURSIVE descendants AS (
@@ -2783,6 +2949,7 @@ stateDiagram-v2
    - `Service.FailJob`: `InTx` → `tx.FailJob` → if the new state is `dead` and `WorkflowID != nil` → `tx.CancelDescendants`.
    - `Service.ReapOnce`: run each batch inside `InTx`; for each returned job that is `dead` with a workflow → `tx.CancelDescendants`.
 3. Store `RestoreDescendants(ctx, jobID int64) ([]Job, error)` (**inside `InTx`**, called after the job itself has been replayed to `pending`):
+
    ```sql
    WITH RECURSIVE descendants AS (
        SELECT d.job_id FROM job_dependencies d WHERE d.depends_on_job_id = $1
@@ -2804,9 +2971,11 @@ stateDiagram-v2
    WHERE j.id IN (SELECT job_id FROM descendants) AND j.state = 'cancelled'
    RETURNING <jobColumns("j.")>
    ```
+
    Explain why every restored job ends with `pending_dependencies ≥ 1`, so the `CHECK` is satisfied: each has at least one non-succeeded ancestor on the path (the replayed job itself, or another restored job).
 
-   **Race to prevent (teach it):** a sibling parent (e.g. a still-running `transform_b`) might complete *during* the replay. Its `UnblockChildren` skips `load` (still `cancelled` in its snapshot), while the restore counts `transform_b` as unfinished, so `load` would wait forever on a dependency that already succeeded. Fix: in the same transaction, **before** the `UPDATE`, lock every parent of every descendant with a separate statement:
+   **Race to prevent (teach it):** a sibling parent (e.g. a still-running `transform_b`) might complete _during_ the replay. Its `UnblockChildren` skips `load` (still `cancelled` in its snapshot), while the restore counts `transform_b` as unfinished, so `load` would wait forever on a dependency that already succeeded. Fix: in the same transaction, **before** the `UPDATE`, lock every parent of every descendant with a separate statement:
+
    ```sql
    WITH RECURSIVE descendants AS ( ...same CTE as above... )
    SELECT p.id
@@ -2816,7 +2985,9 @@ stateDiagram-v2
    ORDER BY p.id
    FOR SHARE OF p
    ```
-   A parent that's mid-completion holds a row lock, so this waits for it to commit; the following `UPDATE` is a new statement (new snapshot under READ COMMITTED) and counts it correctly. A parent that tries to complete *after* this point blocks on the share lock until the replay commits, then sees `load` as `blocked` and decrements it normally.
+
+   A parent that's mid-completion holds a row lock, so this waits for it to commit; the following `UPDATE` is a new statement (new snapshot under READ COMMITTED) and counts it correctly. A parent that tries to complete _after_ this point blocks on the share lock until the replay commits, then sees `load` as `blocked` and decrements it normally.
+
 4. `Service.ReplayJob` and `Service.ReplayDeadJobs`: run in `InTx`; for every replayed job with a workflow → `tx.RestoreDescendants`.
 5. Tests:
    - Diamond where `transform_a` uses a test handler that fails permanently: `transform_a` → `dead`, `load` → `cancelled` (`pending_dependencies = 0`, `completed_at` set), `transform_b` still `succeeded`, workflow state `FAILED`.
@@ -2826,6 +2997,7 @@ stateDiagram-v2
 **Verify.** `make test`. Manual: a diamond where one transform is `always_fail --max-attempts 1`; watch `workflow get` show the cancellation; then replay.
 
 **Check your understanding.**
+
 1. Why `UNION` and not `UNION ALL` in the recursive CTE?
 2. Why recompute `pending_dependencies` on replay instead of incrementing?
 3. When `transform_a` dies, what happens to `transform_b`, and why might you choose differently?
@@ -2833,6 +3005,7 @@ stateDiagram-v2
 **Done when.** Failures cancel downstream jobs, and replays restore them correctly.
 
 ---
+
 ## Phase 15 — Observability: Prometheus metrics and Grafana
 
 ### Step 15.1 — Metrics in the server and worker
@@ -2840,6 +3013,7 @@ stateDiagram-v2
 **Problem.** We can't operate (or benchmark) what we can't see. How many jobs per second? How long do jobs wait? Is the DLQ growing? Are workers saturated?
 
 **Teach.**
+
 - Metrics vs logs vs traces: what each is for.
 - The Prometheus **pull** model: each process serves `/metrics`, and Prometheus scrapes it.
 - **Metric types:** Counter (only goes up; query with `rate()`), Gauge (goes up and down), Histogram (bucketed observations; quantiles computed in PromQL, and **aggregatable across instances**, unlike Summaries).
@@ -2853,36 +3027,38 @@ stateDiagram-v2
 - Exposing `/debug/pprof` on the metrics port for Phase 16, and **never on a public port**.
 
 **Build.**
+
 1. `go get github.com/prometheus/client_golang`.
 2. `internal/metrics/server.go`: `type ServerMetrics struct {...}` and `func NewServerMetrics(reg prometheus.Registerer) *ServerMetrics` with exactly these metrics:
 
-   | Name | Type | Labels | Meaning |
-   |---|---|---|---|
-   | `jobqueue_jobs_enqueued_total` | counter | `queue`, `type` | jobs created (not idempotent repeats) |
-   | `jobqueue_jobs_claimed_total` | counter | `queue` | jobs handed to workers |
-   | `jobqueue_jobs_finished_total` | counter | `queue`, `type`, `outcome` | outcome: `succeeded`, `retried`, `dead`, `released` |
-   | `jobqueue_job_wait_seconds` | histogram | `queue` | `run_at` → claimed |
-   | `jobqueue_job_e2e_seconds` | histogram | `queue` | `run_at` → succeeded |
-   | `jobqueue_leases_reaped_total` | counter | `outcome` | `pending` or `dead` |
-   | `jobqueue_queue_jobs` | gauge | `queue`, `state` | current row counts |
-   | `jobqueue_oldest_pending_job_age_seconds` | gauge | `queue` | age of the oldest *due* pending job |
-   | `jobqueue_cron_fired_total` | counter | `schedule` | cron fires |
-   | `jobqueue_is_leader` | gauge | — | 1 while this replica leads |
-   | `jobqueue_workflow_jobs_unblocked_total` | counter | — | |
-   | `jobqueue_workflow_jobs_cancelled_total` | counter | — | |
-   | `jobqueue_grpc_requests_total` | counter | `method`, `code` | |
-   | `jobqueue_grpc_request_duration_seconds` | histogram | `method` | |
+   | Name                                      | Type      | Labels                     | Meaning                                             |
+   | ----------------------------------------- | --------- | -------------------------- | --------------------------------------------------- |
+   | `jobqueue_jobs_enqueued_total`            | counter   | `queue`, `type`            | jobs created (not idempotent repeats)               |
+   | `jobqueue_jobs_claimed_total`             | counter   | `queue`                    | jobs handed to workers                              |
+   | `jobqueue_jobs_finished_total`            | counter   | `queue`, `type`, `outcome` | outcome: `succeeded`, `retried`, `dead`, `released` |
+   | `jobqueue_job_wait_seconds`               | histogram | `queue`                    | `run_at` → claimed                                  |
+   | `jobqueue_job_e2e_seconds`                | histogram | `queue`                    | `run_at` → succeeded                                |
+   | `jobqueue_leases_reaped_total`            | counter   | `outcome`                  | `pending` or `dead`                                 |
+   | `jobqueue_queue_jobs`                     | gauge     | `queue`, `state`           | current row counts                                  |
+   | `jobqueue_oldest_pending_job_age_seconds` | gauge     | `queue`                    | age of the oldest _due_ pending job                 |
+   | `jobqueue_cron_fired_total`               | counter   | `schedule`                 | cron fires                                          |
+   | `jobqueue_is_leader`                      | gauge     | —                          | 1 while this replica leads                          |
+   | `jobqueue_workflow_jobs_unblocked_total`  | counter   | —                          |                                                     |
+   | `jobqueue_workflow_jobs_cancelled_total`  | counter   | —                          |                                                     |
+   | `jobqueue_grpc_requests_total`            | counter   | `method`, `code`           |                                                     |
+   | `jobqueue_grpc_request_duration_seconds`  | histogram | `method`                   |                                                     |
 
    Buckets: `prometheus.ExponentialBuckets(0.001, 2, 20)` for wait/e2e (1ms … ~9 min), `prometheus.ExponentialBuckets(0.0005, 2, 16)` for RPC durations.
+
 3. `internal/metrics/worker.go`: `NewWorkerMetrics(reg)` with:
 
-   | Name | Type | Labels |
-   |---|---|---|
-   | `jobqueue_worker_jobs_inflight` | gauge | — |
-   | `jobqueue_worker_concurrency` | gauge | — (set once to the configured capacity) |
+   | Name                                   | Type      | Labels                                                              |
+   | -------------------------------------- | --------- | ------------------------------------------------------------------- |
+   | `jobqueue_worker_jobs_inflight`        | gauge     | —                                                                   |
+   | `jobqueue_worker_concurrency`          | gauge     | — (set once to the configured capacity)                             |
    | `jobqueue_worker_job_duration_seconds` | histogram | `type`, `outcome` (`succeeded`, `failed`, `released`, `lease_lost`) |
-   | `jobqueue_worker_fetches_total` | counter | `result` (`jobs`, `empty`, `error`) |
-   | `jobqueue_worker_heartbeats_total` | counter | `result` (`ok`, `lost`, `error`) |
+   | `jobqueue_worker_fetches_total`        | counter   | `result` (`jobs`, `empty`, `error`)                                 |
+   | `jobqueue_worker_heartbeats_total`     | counter   | `result` (`ok`, `lost`, `error`)                                    |
 
 4. `internal/metrics/http.go`: `func Serve(ctx context.Context, addr string, reg *prometheus.Registry, logger *slog.Logger) error`, which runs an `http.Server` with `/metrics` (`promhttp.HandlerFor(reg, promhttp.HandlerOpts{})`) and the pprof handlers registered explicitly (`/debug/pprof/`, `/debug/pprof/cmdline`, `/debug/pprof/profile`, `/debug/pprof/symbol`, `/debug/pprof/trace`). Shut it down gracefully when `ctx` is done. Register `collectors.NewGoCollector()` and `collectors.NewProcessCollector(collectors.ProcessCollectorOpts{})`.
 5. Instrument: the service (enqueue, fetch/claim, complete, fail, release, reap, workflow unblock/cancel), the cron scheduler, the leader elector (pass in a callback or the gauge), and the worker. Pass metrics in through constructors (`queue.Options.Metrics`, `worker.Config` or a constructor argument). Allow `nil` metrics in tests that don't care: wrap the calls in small helper methods that no-op on `nil`.
@@ -2896,6 +3072,7 @@ stateDiagram-v2
 **Walkthrough focus.** Pick three metrics and trace where each is incremented. Why there's no `job_id` label. How the interceptor wraps every RPC.
 
 **Check your understanding.**
+
 1. Why a histogram rather than a summary for wait time?
 2. What would happen to Prometheus if we labelled by `job_id`?
 3. Which single metric would you look at first to know whether the queue is keeping up?
@@ -2909,12 +3086,14 @@ stateDiagram-v2
 **Problem.** Raw `/metrics` text isn't a dashboard. We want graphs, quantiles, and alert rules, all versioned in git.
 
 **Teach.**
+
 - Prometheus config: `scrape_configs`, `static_configs`, `scrape_interval`. Containers reach processes on the host through `host.docker.internal` (on Linux this needs `extra_hosts: host-gateway`).
 - PromQL essentials: `rate(x_total[1m])`, `sum by (label) (...)`, `histogram_quantile(0.95, sum by (le) (rate(x_bucket[1m])))`, `increase(...)`.
 - **Dashboards as code:** Grafana provisioning loads data sources and dashboards from files at startup.
 - Alerting concepts and three useful starter alerts (rules file only; Alertmanager is out of scope).
 
 **Build.**
+
 1. `deploy/prometheus/prometheus.yml`:
    ```yaml
    global:
@@ -2937,27 +3116,27 @@ stateDiagram-v2
 2. `deploy/prometheus/alerts.yml` with three rules: **DLQ growing** (`increase(jobqueue_jobs_finished_total{outcome="dead"}[10m]) > 0`), **queue falling behind** (`max by (queue) (jobqueue_oldest_pending_job_age_seconds) > 300` for 5m), **no workers fetching** (`sum(rate(jobqueue_worker_fetches_total[5m])) == 0` for 5m).
 3. Add to `docker-compose.yml`:
    ```yaml
-     prometheus:
-       image: prom/prometheus
-       ports:
-         - "9090:9090"
-       volumes:
-         - ./deploy/prometheus:/etc/prometheus:ro
-       extra_hosts:
-         - "host.docker.internal:host-gateway"
+   prometheus:
+     image: prom/prometheus
+     ports:
+       - "9090:9090"
+     volumes:
+       - ./deploy/prometheus:/etc/prometheus:ro
+     extra_hosts:
+       - "host.docker.internal:host-gateway"
 
-     grafana:
-       image: grafana/grafana
-       ports:
-         - "3000:3000"
-       environment:
-         GF_AUTH_ANONYMOUS_ENABLED: "true"     # local development only
-         GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"   # local development only
-       volumes:
-         - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
-         - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
-       depends_on:
-         - prometheus
+   grafana:
+     image: grafana/grafana
+     ports:
+       - "3000:3000"
+     environment:
+       GF_AUTH_ANONYMOUS_ENABLED: "true" # local development only
+       GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin" # local development only
+     volumes:
+       - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+       - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
+     depends_on:
+       - prometheus
    ```
 4. `deploy/grafana/provisioning/datasources/prometheus.yml`:
    ```yaml
@@ -2999,12 +3178,14 @@ stateDiagram-v2
 6. `jqctl enqueue --count N` (enqueue N copies quickly, reusing one connection) for generating demo load.
 
 **Verify.**
+
 - `make up`; open `http://localhost:9090/targets` (server and worker UP); open `http://localhost:3000` → the "Job Queue" dashboard.
 - Generate load: run a worker, then in parallel `./bin/jqctl enqueue --count 2000 --type sleep --payload '{"ms":50}'`, `--count 200 --type flaky --payload '{"fail_rate":0.5}'`, `--count 20 --type always_fail --max-attempts 2`. Watch throughput, wait times, retries, and dead jobs appear.
 - Kill a worker with `kill -9` during load → watch "Leases reaped/s" spike.
 - If Grafana shows nothing: `docker compose logs grafana` and check the provisioning paths.
 
 **Check your understanding.**
+
 1. Write the PromQL for p99 wait time per queue.
 2. Which alert would have caught the `always_fail` jobs?
 3. Why does the depth panel use `max by` instead of `sum by`?
@@ -3020,6 +3201,7 @@ stateDiagram-v2
 **Problem.** The resume bullet needs honest numbers: jobs/sec across N workers, plus latency. We need a repeatable way to produce them.
 
 **Teach.**
+
 - What to measure: **throughput** (completed jobs/sec) and **latency distribution** (p50/p95/p99 wait and end-to-end). Averages hide the tail.
 - **Saturation** runs (enqueue as fast as possible: finds max throughput) vs **fixed-rate** runs (enqueue at R/sec: shows latency under realistic load). Coordinated omission in one paragraph: a load generator that waits for slow responses under-reports latency.
 - **Little's Law:** `L = λ × W` (items in the system = throughput × time in the system). Use it to sanity-check results and size concurrency.
@@ -3027,6 +3209,7 @@ stateDiagram-v2
 - Measure latency **from the database** (`completed_at − created_at`): one clock and exact.
 
 **Build.**
+
 1. `cmd/bench/main.go` with two modes. Both use queue `bench` and delete old bench rows first (`DELETE FROM jobs WHERE queue = 'bench'`) through a direct DB connection (`JQ_DATABASE_URL`).
    - `bench enqueue --jobs 100000 --producers 16`: measures enqueue throughput and client-side RPC latency p50/p95/p99 (collect durations per producer, merge, sort, pick percentiles).
    - `bench e2e --jobs 50000 --producers 16 --type noop|sleep --sleep-ms 10 [--rate 0] [--timeout 10m]`: workers must already be running on queue `bench`. Enqueue (as fast as possible if `--rate 0`, otherwise paced with a `time.Ticker` shared by producers), then poll until every bench job is `succeeded` (or time out), then compute from the database:
@@ -3045,6 +3228,7 @@ stateDiagram-v2
 **Verify.** A small smoke run: `bin/bench e2e --jobs 2000 --type noop` with one worker.
 
 **Check your understanding.**
+
 1. Using Little's Law: 4 workers × 32 concurrency running 10ms jobs. What's the theoretical maximum throughput? (≈ 12,800 jobs/s.) What would stop us from reaching it?
 2. Why is p99 more useful than the average?
 
@@ -3054,9 +3238,10 @@ stateDiagram-v2
 
 ### Step 16.2 — Baseline runs, profiling and tuning
 
-**Problem.** Get real baseline numbers, find the bottleneck, and try *one* improvement at a time.
+**Problem.** Get real baseline numbers, find the bottleneck, and try _one_ improvement at a time.
 
 **Teach.**
+
 - **Finding the bottleneck:** is it database CPU, connection-pool waits, lock contention, network round trips, or idle polling?
 - **pprof:** `go tool pprof -http=: 'http://localhost:2112/debug/pprof/profile?seconds=20'` (CPU flame graph); heap profiles; goroutine dumps (`/debug/pprof/goroutine?debug=2`) for spotting leaks or stuck goroutines.
 - **`pg_stat_statements`:** `CREATE EXTENSION IF NOT EXISTS pg_stat_statements;` then the top queries by `total_exec_time`.
@@ -3064,6 +3249,7 @@ stateDiagram-v2
 - Diminishing returns and Amdahl's law: Postgres is the shared resource every worker contends for.
 
 **Build / do.**
+
 1. Run `scripts/bench_matrix.sh` in Postgres mode and record the results in `docs/BENCHMARKS.md`.
 2. Profile one saturated run: a server CPU profile + the `pg_stat_statements` top 5 + `docker stats` during the run. The AI explains what dominates.
 3. Try **one** change at a time and record before/after, e.g. `MaxBatch` 1 vs 10 vs 50, or server pool `MaxConns` 10 vs 50. Discuss the batch-size trade-off (throughput vs fairness between workers).
@@ -3073,6 +3259,7 @@ stateDiagram-v2
 **Verify.** The `docs/BENCHMARKS.md` tables are filled in, and the profile findings are written up.
 
 **Check your understanding.**
+
 1. What did the profile say the bottleneck was, and what's the evidence?
 2. Why change only one variable per run?
 
@@ -3089,6 +3276,7 @@ stateDiagram-v2
 This step is **design and teaching only**. The AI writes the design into `docs/ARCHITECTURE.md` ("Redis scheduling layer").
 
 **Teach.**
+
 - Why Redis: in-memory sorted sets with O(log n) operations, atomic pops, and Lua scripts for atomic multi-step operations. Postgres keeps durability and every state transition (Law 1).
 - **Sorted sets:** `ZADD`, `ZPOPMIN`, `ZRANGEBYSCORE`, `ZREM`, `ZSCORE`.
 - **Key layout:**
@@ -3100,7 +3288,7 @@ This step is **design and teaching only**. The AI writes the design into `docs/A
   2. Redis holds an ID whose Postgres row isn't claimable any more → the fenced Postgres claim matches nothing → **re-check the row and drop or re-add it**.
   3. `ZPOPMIN` succeeded, then the server crashed before the Postgres claim → job pending in Postgres but gone from Redis → the reconciler re-adds it.
   4. Redis wiped completely → the reconciler rebuilds everything.
-  **Rule: Redis can only cause *delay*, never *loss* or *double processing*, because Postgres's compare-and-set is the gate.** This is exactly the gap the transactional outbox pattern (a stretch goal) closes more elegantly.
+     **Rule: Redis can only cause _delay_, never _loss_ or _double processing_, because Postgres's compare-and-set is the gate.** This is exactly the gap the transactional outbox pattern (a stretch goal) closes more elegantly.
 - **Every path that makes a job `pending` must notify the index:** Enqueue (`pending`, not `blocked`), workflow submission roots, FailJob (retry), the reaper, ReleaseJob, ReplayJob/ReplayDeadJobs, unblocked workflow children, and cron fires. **Notify after the transaction commits**, never inside it.
 - **Promotion:** a leader-only loop moves due members from `delayed` to `ready` with a Lua script (atomic).
 - **Reconciliation (anti-entropy):** a leader-only loop pages through pending jobs in Postgres and re-adds any that Redis doesn't know about.
@@ -3110,8 +3298,9 @@ This step is **design and teaching only**. The AI writes the design into `docs/A
 **Verify.** The learner explains the four failure cases back to the AI.
 
 **Check your understanding.**
+
 1. Why can Redis never cause a job to run twice in this design?
-2. Why notify Redis only *after* the Postgres transaction commits?
+2. Why notify Redis only _after_ the Postgres transaction commits?
 3. What's the worst-case extra delay if a Redis write fails?
 
 **Done when.** The design is written down and the learner can defend it.
@@ -3121,6 +3310,7 @@ This step is **design and teaching only**. The AI writes the design into `docs/A
 ### Step 17.2 — Implement the Redis index: notify, promote, fetch
 
 **Build.**
+
 1. `go get github.com/redis/go-redis/v9`. Config: `JQ_REDIS_ADDR` (`localhost:6380`), `JQ_SCHEDULER_MODE` (`postgres` | `redis`).
 2. `internal/redisq/index.go`:
    ```go
@@ -3188,6 +3378,7 @@ This step is **design and teaching only**. The AI writes the design into `docs/A
 **Walkthrough focus.** The complete list of notify call sites. The fetch path including the stale and fallback branches. Why the promoter is leader-only.
 
 **Check your understanding.**
+
 1. What happens to a job popped from Redis whose Postgres row is already `succeeded`?
 2. Why is `(9 − priority) × 10^13 + run_at_ms` a valid single score?
 3. Why does the fallback path stay correct even though Redis still holds entries for jobs claimed through Postgres?
@@ -3199,16 +3390,19 @@ This step is **design and teaching only**. The AI writes the design into `docs/A
 ### Step 17.3 — Reconciler and failure drills
 
 **Build.**
+
 1. Store: `PendingQueues(ctx) ([]string, error)` (`SELECT DISTINCT queue FROM jobs WHERE state = 'pending'`) and `ListPendingPage(ctx, queue string, afterID int64, limit int) ([]Job, error)` (`WHERE state = 'pending' AND queue = $1 AND id > $2 ORDER BY id LIMIT $3`).
 2. `Service.ReconcileOnce(ctx) (repaired int, err error)`: for each pending queue, page through in batches of 1,000; `Index.Missing(batch)` → `Index.Add(missing)`; count `jobqueue_redis_reconciled_total`.
 3. `Service.RunReconciler(ctx, 30*time.Second)`, leader-only, next to the promoter.
 4. Tests: enqueue 100 jobs in Redis mode, delete all `<prefix>:*` keys, `ReconcileOnce` → 100 repaired, then a worker processes all of them. Also: `Pop` 5 IDs directly (simulating a crash between pop and claim) → `ReconcileOnce` restores exactly those 5.
 
 **Verify (failure drills; record the observations in the learning log).**
+
 - During a steady load run, `make redis-cli` → `FLUSHALL`. Watch fetches fall back or slow briefly, the reconciler repair the index, and every job complete.
 - `docker compose stop redis` for 20 seconds during load, then `docker compose start redis`. Watch the error metrics, the fallback to Postgres, and the recovery.
 
 **Check your understanding.**
+
 1. What's the longest a job can be "invisible" to Redis in the worst case?
 2. Why page by `id` instead of `OFFSET`?
 
@@ -3219,13 +3413,15 @@ This step is **design and teaching only**. The AI writes the design into `docs/A
 ### Step 17.4 — Re-benchmark and compare
 
 **Do.**
+
 1. Run the same matrix as 16.2 in Redis mode.
 2. Run the "many future jobs" scenario from 12.3 in both modes: seed 200,000 delayed jobs, then run `bench e2e`.
 3. Compare in `docs/BENCHMARKS.md`: throughput, p95 wait, database CPU (`docker stats`), and claim query time (`pg_stat_statements`).
-4. **Interpret honestly.** Redis mode may *not* win at small scale: there's an extra network hop, and Postgres still does the compare-and-set `UPDATE`. Expected wins: delayed-heavy workloads, less index scanning, lower database CPU per fetch. "Measure, don't assume" makes a strong interview story whichever way the numbers go.
+4. **Interpret honestly.** Redis mode may _not_ win at small scale: there's an extra network hop, and Postgres still does the compare-and-set `UPDATE`. Expected wins: delayed-heavy workloads, less index scanning, lower database CPU per fetch. "Measure, don't assume" makes a strong interview story whichever way the numbers go.
 5. Record a decision ("ADR: default scheduler mode") in `docs/ARCHITECTURE.md` with the evidence.
 
 **Check your understanding.**
+
 1. Which workload benefited most from Redis, and why?
 2. If Redis mode were slower overall, would you still keep it? Under what conditions?
 
@@ -3240,12 +3436,14 @@ This step is **design and teaching only**. The AI writes the design into `docs/A
 **Problem.** Prove the core guarantee end to end with real processes: when workers are killed with SIGKILL mid-job, no job is lost, no effect is duplicated, and recovery time is bounded.
 
 **Teach.**
+
 - Verification mindset: state the invariants, then try hard to break them.
 - What we expect: every job delivered **≥ 1** time; every effect applied **exactly once** (thanks to the idempotent handler); recovery time ≈ lease duration + reaper interval.
 - How this differs from the stretch-goal chaos suite: this is one scripted scenario, not a framework.
 - Bash essentials used here: `set -euo pipefail`, background processes, `trap` for cleanup.
 
 **Build.** `scripts/crash_test.sh` (parameters via env vars with defaults: `JOBS=5000`, `WORKERS=4`, `KILL_EVERY=3`, `LEASE=5s`):
+
 1. Load env vars at the top of the script (`set -a; source .env; set +a`), since it isn't run through `make`. Build binaries (`make build`); clean up: `DELETE FROM jobs WHERE queue = 'crash'; DELETE FROM demo_effects;` (through `docker compose exec -T postgres psql -U jobqueue jobqueue -c "..."`).
 2. Start the server in the background with `JQ_LEASE_DURATION=$LEASE JQ_REAPER_INTERVAL=1s`.
 3. Start `WORKERS` restart loops, each `while true; do JQ_WORKER_QUEUES=crash JQ_WORKER_CONCURRENCY=16 JQ_METRICS_ADDR=:$((2113+i)) ./bin/worker; sleep 0.5; done &`.
@@ -3263,6 +3461,7 @@ This step is **design and teaching only**. The AI writes the design into `docs/A
 **Verify.** Run it twice (with kills and without). Record the results in `docs/BENCHMARKS.md` under "Crash recovery".
 
 **Check your understanding.**
+
 1. Why is `deliveries > 1` expected, and why is it fine?
 2. What bounds the extra latency for jobs whose worker was killed?
 3. What result would you see if the handler weren't idempotent?
@@ -3276,6 +3475,7 @@ This step is **design and teaching only**. The AI writes the design into `docs/A
 **Problem.** A project only helps your career if you can explain it clearly and back it up with evidence.
 
 **Build.**
+
 1. `README.md`: a one-paragraph pitch; feature list; architecture diagram (reuse 1.2); quickstart (`make up`, `make migrate-up`, run the server and a worker, `jqctl` examples, open Grafana); design highlights (`SKIP LOCKED` claims, leases + fencing, backoff with full jitter, DLQ + replay, cron with advisory-lock leader election + idempotency keys, counter-based DAG unblocking, Redis as a derived index + reconciler); benchmark and crash-test results **with hardware details**; limitations and future work (exactly-once via transactional outbox, Kubernetes + HPA, a chaos suite, authentication for the admin API, multi-tenant fairness, retention and cleanup of finished jobs, partitioning the `jobs` table); links to `docs/`.
 2. Finish `docs/ARCHITECTURE.md`: lifecycle, guarantees, components, data model, performance notes, and a list of decisions (ADRs): Postgres as source of truth; pull-based fetch; `attempts` as the fencing token; full jitter; DLQ as a state; advisory-lock leader + idempotency keys; counter-based DAG; Redis as a derived index.
 3. The resume bullet with **real** numbers from `docs/BENCHMARKS.md`, in a short and a long version. Template:
@@ -3290,66 +3490,67 @@ This step is **design and teaching only**. The AI writes the design into `docs/A
 **Done when.** The README, architecture doc, benchmarks, resume bullet and interview prep are complete, and the learner can explain any part of the system without notes.
 
 ---
+
 ## Appendix A: Glossary
 
-| Term | Meaning in this project |
-|---|---|
-| **Job** | One unit of work: a `type` (which handler runs it) plus a JSON `payload`. |
-| **Queue** | A named stream of jobs (`default`, `critical`, ...). Workers choose which queues to pull from. |
-| **Claim** | Atomically moving a job from `pending` to `running` and giving one worker a lease on it. |
-| **Lease** | Time-limited ownership of a running job (`lease_owner`, `lease_expires_at`). |
-| **Heartbeat** | A worker renewing its lease while the job is still running. |
-| **Reaper** | A background loop that returns jobs with expired leases to `pending` (or `dead`). |
-| **Fencing token** | A number that increases with every new owner; writes carrying an old token are rejected. Here: `attempts`. |
-| **Zombie worker** | A worker that lost its lease (e.g. after a long pause) but is still running the job. |
-| **At-least-once** | Every job runs one or more times; never zero. |
-| **Effectively-once** | At-least-once delivery + idempotent handlers = the effect happens once. |
-| **Idempotent** | Doing it twice has the same effect as doing it once. |
-| **Idempotency key** | A client-chosen unique key that makes a request safe to retry. |
-| **Backoff** | Waiting longer between successive retries. |
-| **Jitter** | Randomizing retry delays so clients don't retry in lockstep. |
-| **Thundering herd** | Many clients retrying at the same moment and overloading a service. |
-| **Poison message / pill** | A job that fails (or crashes workers) every time it runs. |
-| **DLQ (dead-letter queue)** | Where jobs go after exhausting retries; here, `state = 'dead'`. |
-| **Replay** | Moving a dead job back to `pending` after fixing the root cause. |
-| **Backpressure** | The consumer controlling the rate of work (workers fetch only what they can run). |
-| **Semaphore** | A counter limiting how many things run at once; here, a buffered channel. |
-| **Graceful shutdown / drain** | Stop taking work, finish in-flight work, hand back the rest, then exit. |
-| **Advisory lock** | A Postgres lock on an application-chosen number, used here for leader election. |
-| **Leader election** | Choosing one replica to perform singleton work (cron, promoter, reconciler). |
-| **DAG** | Directed acyclic graph: the shape of a workflow's dependencies. |
-| **Topological sort** | An ordering of DAG nodes where each node comes after its dependencies. |
-| **Lost update** | Two concurrent read-modify-write cycles where one overwrites the other. |
-| **MVCC** | Postgres's multi-version concurrency control: updates create new row versions; vacuum removes dead ones. |
-| **Partial index** | An index over only the rows matching a `WHERE` clause. |
-| **Keyset pagination** | Paging with `WHERE id > last_seen ORDER BY id LIMIT n` instead of `OFFSET`. |
-| **Cardinality** | The number of distinct label combinations (time series) a metric has. |
-| **Little's Law** | Items in a system = arrival rate × time each spends in the system. |
-| **Dual write** | Writing the same fact to two systems without a shared transaction. |
-| **Reconciler / anti-entropy** | A loop that finds and repairs differences between a source of truth and a derived copy. |
+| Term                          | Meaning in this project                                                                                    |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **Job**                       | One unit of work: a `type` (which handler runs it) plus a JSON `payload`.                                  |
+| **Queue**                     | A named stream of jobs (`default`, `critical`, ...). Workers choose which queues to pull from.             |
+| **Claim**                     | Atomically moving a job from `pending` to `running` and giving one worker a lease on it.                   |
+| **Lease**                     | Time-limited ownership of a running job (`lease_owner`, `lease_expires_at`).                               |
+| **Heartbeat**                 | A worker renewing its lease while the job is still running.                                                |
+| **Reaper**                    | A background loop that returns jobs with expired leases to `pending` (or `dead`).                          |
+| **Fencing token**             | A number that increases with every new owner; writes carrying an old token are rejected. Here: `attempts`. |
+| **Zombie worker**             | A worker that lost its lease (e.g. after a long pause) but is still running the job.                       |
+| **At-least-once**             | Every job runs one or more times; never zero.                                                              |
+| **Effectively-once**          | At-least-once delivery + idempotent handlers = the effect happens once.                                    |
+| **Idempotent**                | Doing it twice has the same effect as doing it once.                                                       |
+| **Idempotency key**           | A client-chosen unique key that makes a request safe to retry.                                             |
+| **Backoff**                   | Waiting longer between successive retries.                                                                 |
+| **Jitter**                    | Randomizing retry delays so clients don't retry in lockstep.                                               |
+| **Thundering herd**           | Many clients retrying at the same moment and overloading a service.                                        |
+| **Poison message / pill**     | A job that fails (or crashes workers) every time it runs.                                                  |
+| **DLQ (dead-letter queue)**   | Where jobs go after exhausting retries; here, `state = 'dead'`.                                            |
+| **Replay**                    | Moving a dead job back to `pending` after fixing the root cause.                                           |
+| **Backpressure**              | The consumer controlling the rate of work (workers fetch only what they can run).                          |
+| **Semaphore**                 | A counter limiting how many things run at once; here, a buffered channel.                                  |
+| **Graceful shutdown / drain** | Stop taking work, finish in-flight work, hand back the rest, then exit.                                    |
+| **Advisory lock**             | A Postgres lock on an application-chosen number, used here for leader election.                            |
+| **Leader election**           | Choosing one replica to perform singleton work (cron, promoter, reconciler).                               |
+| **DAG**                       | Directed acyclic graph: the shape of a workflow's dependencies.                                            |
+| **Topological sort**          | An ordering of DAG nodes where each node comes after its dependencies.                                     |
+| **Lost update**               | Two concurrent read-modify-write cycles where one overwrites the other.                                    |
+| **MVCC**                      | Postgres's multi-version concurrency control: updates create new row versions; vacuum removes dead ones.   |
+| **Partial index**             | An index over only the rows matching a `WHERE` clause.                                                     |
+| **Keyset pagination**         | Paging with `WHERE id > last_seen ORDER BY id LIMIT n` instead of `OFFSET`.                                |
+| **Cardinality**               | The number of distinct label combinations (time series) a metric has.                                      |
+| **Little's Law**              | Items in a system = arrival rate × time each spends in the system.                                         |
+| **Dual write**                | Writing the same fact to two systems without a shared transaction.                                         |
+| **Reconciler / anti-entropy** | A loop that finds and repairs differences between a source of truth and a derived copy.                    |
 
 ---
 
 ## Appendix B: Troubleshooting
 
-| Symptom | Likely cause and fix |
-|---|---|
-| `protoc-gen-go: program not found or is not executable` | `$(go env GOPATH)/bin` isn't on `PATH`. Add it to `~/.zshrc` and open a new terminal. |
-| `Bind for 0.0.0.0:5433 failed: port is already allocated` | Something else uses the port. Stop it, or change the host port in `docker-compose.yml` and `.env`. |
-| Tests fail with `connection refused` | Docker services aren't running: `make up`. |
-| `there is no unique or exclusion constraint matching the ON CONFLICT specification` | The `ON CONFLICT` target is missing the partial index's `WHERE idempotency_key IS NOT NULL`. |
-| `new row for relation "jobs" violates check constraint "jobs_lease_check"` | A transition forgot to set or clear `lease_owner` / `lease_expires_at`. The invariant just caught a real bug. |
-| `... violates check constraint "jobs_completed_check"` | A transition into or out of a terminal state forgot `completed_at`. |
-| `... violates check constraint "jobs_blocked_deps_check"` | A workflow transition left `pending_dependencies` inconsistent with `state` (e.g. cancelling without setting it to 0). |
-| `conn busy` from pgx | A single `pgx.Conn` used from several goroutines at once. Use the pool, or one connection per goroutine. |
-| `import cycle not allowed in test` | A test in `package store` imports `testutil`. Change it to `package store_test`. |
-| `fatal error: all goroutines are asleep - deadlock!` | Every goroutine is blocked: typically an unbuffered send nobody receives, or a `WaitGroup` that's never `Done`. |
-| `WARNING: DATA RACE` | Read both stack traces: one is the write, one the conflicting access. Protect the shared value with a mutex or atomic, or stop sharing it. |
-| gRPC `Unavailable: connection refused` | The server isn't running, or `JQ_SERVER_ADDR` is wrong. |
-| bufconn tests hang or fail to connect | The target must be `passthrough:///bufnet`, not `bufnet`. |
-| `ERROR: deadlock detected` (SQLSTATE `40P01`) | Two transactions locked rows in different orders. Lock in a consistent order (`ORDER BY id ... FOR UPDATE`), and retry the transaction if it still happens. |
-| Grafana dashboard empty | Check `http://localhost:9090/targets`; on Linux make sure `extra_hosts: host-gateway` is set; check `docker compose logs grafana`. |
-| `buf breaking` fails | You changed or removed an existing field number or type. Add a new field instead. |
+| Symptom                                                                             | Likely cause and fix                                                                                                                                        |
+| ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `protoc-gen-go: program not found or is not executable`                             | `$(go env GOPATH)/bin` isn't on `PATH`. Add it to `~/.zshrc` and open a new terminal.                                                                       |
+| `Bind for 0.0.0.0:5433 failed: port is already allocated`                           | Something else uses the port. Stop it, or change the host port in `docker-compose.yml` and `.env`.                                                          |
+| Tests fail with `connection refused`                                                | Docker services aren't running: `make up`.                                                                                                                  |
+| `there is no unique or exclusion constraint matching the ON CONFLICT specification` | The `ON CONFLICT` target is missing the partial index's `WHERE idempotency_key IS NOT NULL`.                                                                |
+| `new row for relation "jobs" violates check constraint "jobs_lease_check"`          | A transition forgot to set or clear `lease_owner` / `lease_expires_at`. The invariant just caught a real bug.                                               |
+| `... violates check constraint "jobs_completed_check"`                              | A transition into or out of a terminal state forgot `completed_at`.                                                                                         |
+| `... violates check constraint "jobs_blocked_deps_check"`                           | A workflow transition left `pending_dependencies` inconsistent with `state` (e.g. cancelling without setting it to 0).                                      |
+| `conn busy` from pgx                                                                | A single `pgx.Conn` used from several goroutines at once. Use the pool, or one connection per goroutine.                                                    |
+| `import cycle not allowed in test`                                                  | A test in `package store` imports `testutil`. Change it to `package store_test`.                                                                            |
+| `fatal error: all goroutines are asleep - deadlock!`                                | Every goroutine is blocked: typically an unbuffered send nobody receives, or a `WaitGroup` that's never `Done`.                                             |
+| `WARNING: DATA RACE`                                                                | Read both stack traces: one is the write, one the conflicting access. Protect the shared value with a mutex or atomic, or stop sharing it.                  |
+| gRPC `Unavailable: connection refused`                                              | The server isn't running, or `JQ_SERVER_ADDR` is wrong.                                                                                                     |
+| bufconn tests hang or fail to connect                                               | The target must be `passthrough:///bufnet`, not `bufnet`.                                                                                                   |
+| `ERROR: deadlock detected` (SQLSTATE `40P01`)                                       | Two transactions locked rows in different orders. Lock in a consistent order (`ORDER BY id ... FOR UPDATE`), and retry the transaction if it still happens. |
+| Grafana dashboard empty                                                             | Check `http://localhost:9090/targets`; on Linux make sure `extra_hosts: host-gateway` is set; check `docker compose logs grafana`.                          |
+| `buf breaking` fails                                                                | You changed or removed an existing field number or type. Add a new field instead.                                                                           |
 
 ---
 
@@ -3360,7 +3561,7 @@ This step is **design and teaching only**. The AI writes the design into `docs/A
 - PostgreSQL docs, `EXPLAIN`: https://www.postgresql.org/docs/current/using-explain.html
 - Brandur Leach, "Postgres Job Queues & Failure By MVCC": https://brandur.org/postgres-queues
 - Martin Kleppmann, "How to do distributed locking" (fencing tokens): https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html
-- Martin Kleppmann, *Designing Data-Intensive Applications* (O'Reilly), chapters on transactions, distributed-systems trouble, and stream processing.
+- Martin Kleppmann, _Designing Data-Intensive Applications_ (O'Reilly), chapters on transactions, distributed-systems trouble, and stream processing.
 - AWS Architecture Blog, "Exponential Backoff And Jitter": https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/
 - Go blog, "Go Concurrency Patterns: Pipelines and cancellation": https://go.dev/blog/pipelines
 - Go blog, "Go Concurrency Patterns: Context": https://go.dev/blog/context
@@ -3381,7 +3582,7 @@ This step is **design and teaching only**. The AI writes the design into `docs/A
 
 The AI records every approved deviation from this plan here.
 
-| Date | Step | Change | Reason |
-|---|---|---|---|
-| 2026-10-13 | 1.1 | Added `/server` to `.gitignore` | `go build ./...` with a single `main` package writes the executable to the repo root (not `bin/`), and `git add -A` committed it. Self-resolves once Phase 5 adds more binaries, but the ignore is needed until then. |
-| 2026-10-15 | 0.1, 0.2 | Added the DESIGN stage and ground rule 2: the AI assumes the learner has not read the plan's implementation notes, asks the learner to design each step's solution before building, and does not build until the learner understands the correct design. | Requested by the learner: each step should be a design exercise, not a walkthrough of a finished answer. |
+| Date       | Step     | Change                                                                                                                                                                                                                                                   | Reason                                                                                                                                                                                                                |
+| ---------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-13 | 1.1      | Added `/server` to `.gitignore`                                                                                                                                                                                                                          | `go build ./...` with a single `main` package writes the executable to the repo root (not `bin/`), and `git add -A` committed it. Self-resolves once Phase 5 adds more binaries, but the ignore is needed until then. |
+| 2026-10-15 | 0.1, 0.2 | Added the DESIGN stage and ground rule 2: the AI assumes the learner has not read the plan's implementation notes, asks the learner to design each step's solution before building, and does not build until the learner understands the correct design. | Requested by the learner: each step should be a design exercise, not a walkthrough of a finished answer.                                                                                                              |
